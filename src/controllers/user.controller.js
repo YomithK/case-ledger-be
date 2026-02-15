@@ -1,0 +1,116 @@
+import asyncHandler from 'express-async-handler';
+import * as userService from '../services/user.service.js';
+
+/**
+ * @route   GET /api/v1/users
+ * @desc    Get all users
+ * @access  Admin only
+ */
+export const getAllUsers = asyncHandler(async (req, res) => {
+    // Admin gets full access to sensitive fields (unmasked NIC and DOB)
+    const isAdmin = req.user.role === 'ADMIN';
+    const users = await userService.getAllUsers(isAdmin);
+
+    res.status(200).json({
+        success: true,
+        message: 'Users retrieved successfully',
+        data: {
+            count: users.length,
+            users,
+        },
+    });
+});
+
+/**
+ * @route   GET /api/v1/users/:id
+ * @desc    Get user by ID
+ * @access  Admin or self
+ */
+export const getUserById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    // Check if user is accessing their own profile or is admin
+    if (req.user.role !== 'ADMIN' && req.user.userId.toString() !== id) {
+        return res.status(403).json({
+            success: false,
+            message: 'Access forbidden. You can only access your own profile.',
+        });
+    }
+
+    // Admin gets full access to sensitive fields (unmasked NIC and DOB)
+    const isAdmin = req.user.role === 'ADMIN';
+    const user = await userService.getUserById(id, isAdmin);
+
+    res.status(200).json({
+        success: true,
+        message: 'User retrieved successfully',
+        data: { user },
+    });
+});
+
+/**
+ * @route   PUT /api/v1/users/:id
+ * @desc    Update user profile
+ * @access  Admin or self
+ */
+export const updateUser = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    // Check if user is updating their own profile or is admin
+    if (req.user.role !== 'ADMIN' && req.user.userId.toString() !== id) {
+        return res.status(403).json({
+            success: false,
+            message: 'Access forbidden. You can only update your own profile.',
+        });
+    }
+
+    const user = await userService.updateUser(id, req.body);
+
+    res.status(200).json({
+        success: true,
+        message: 'User updated successfully',
+        data: { user },
+    });
+});
+
+/**
+ * @route   PUT /api/v1/users/:id/role
+ * @desc    Update user role
+ * @access  Admin only
+ */
+export const updateUserRole = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    const user = await userService.updateUserRole(id, role);
+
+    res.status(200).json({
+        success: true,
+        message: 'User role updated successfully',
+        data: { user },
+    });
+});
+
+/**
+ * @route   DELETE /api/v1/users/:id
+ * @desc    Delete user (soft delete)
+ * @access  Admin only
+ */
+export const deleteUser = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    // Prevent admin from deleting themselves
+    if (req.user.userId.toString() === id) {
+        return res.status(400).json({
+            success: false,
+            message: 'You cannot delete your own account.',
+        });
+    }
+
+    const result = await userService.deleteUser(id);
+
+    res.status(200).json({
+        success: true,
+        message: result.message,
+    });
+});
