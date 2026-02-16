@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import * as userRepository from '../repository/user.repository.js';
+import { hashPassword, comparePassword } from '../utils/password.utils.js';
 import { jwt as jwtConfig } from '../config/index.js';
 
 /**
@@ -26,11 +27,14 @@ export const register = async (userData) => {
         }
     }
 
-    // Create new user (password will be hashed by pre-save middleware)
+    //Hash password before storing
+    const hashedPassword = await hashPassword(password);
+
+    // Create new user
     const user = await userRepository.create({
         name,
         email,
-        password,
+        password: hashedPassword,
         role: role || 'NGO', // Default role
         phoneNumber,
         organizationName,
@@ -38,7 +42,7 @@ export const register = async (userData) => {
         dob,
     });
 
-    // Generate JWT token (NEVER include sensitive data like NIC or DOB)
+    // Generate JWT token (exclude sensitive data: NIC or DOB)
     const token = generateToken(user);
 
     // Return user without password (NIC will be masked automatically by toJSON)
@@ -69,7 +73,7 @@ export const login = async (email, password) => {
     }
 
     // Verify password
-    const isPasswordValid = await user.comparePassword(password);
+    const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
         const error = new Error('Invalid email or password');
         error.statusCode = 401;
@@ -80,7 +84,7 @@ export const login = async (email, password) => {
     await userRepository.updateLastLogin(user._id);
     user.lastLoginAt = new Date(); // Update local object for response
 
-    // Generate JWT token (NEVER include sensitive data like NIC or DOB)
+    // Generate JWT token (exclude sensitive data: NIC or DOB)
     const token = generateToken(user);
 
     // Return user without password (NIC will be masked automatically by toJSON)

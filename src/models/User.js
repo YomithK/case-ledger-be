@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import { maskNIC } from '../utils/nic.utils.js';
 
 // Sri Lankan NIC validation regex
 const NIC_REGEX = {
@@ -43,44 +43,72 @@ const userSchema = new mongoose.Schema(
         },
         organizationName: {
             type: String,
-            required: function () {
-                return this.role === 'NGO';
-            },
             trim: true,
+            validate: {
+                validator: function (value) {
+                    // If role is NGO, organizationName is required
+                    if (this.role === 'NGO') {
+                        return value && value.trim().length > 0;
+                    }
+                    // For other roles, organizationName is optional
+                    return true;
+                },
+                message: 'Organization name is required for NGO users',
+            },
         },
         nic: {
             type: String,
-            required: function () {
-                return this.role === 'INVESTIGATOR';
-            },
             unique: true,
             sparse: true, // Allow null values but enforce uniqueness when present
             trim: true,
             uppercase: true,
             select: false, // Don't include NIC in queries by default (sensitive data)
-            validate: {
-                validator: function (value) {
-                    if (!value) return true; // Allow empty if not required
-                    // Validate Sri Lankan NIC format (old or new)
-                    return NIC_REGEX.OLD.test(value) || NIC_REGEX.NEW.test(value);
+            validate: [
+                {
+                    validator: function (value) {
+                        // If role is INVESTIGATOR, NIC is required
+                        if (this.role === 'INVESTIGATOR') {
+                            return value && value.trim().length > 0;
+                        }
+                        // For other roles, NIC is optional
+                        return true;
+                    },
+                    message: 'NIC is required for INVESTIGATOR users',
                 },
-                message: 'Invalid NIC format. Use old format (9 digits + V) or new format (12 digits)',
-            },
+                {
+                    validator: function (value) {
+                        if (!value) return true; // Allow empty if not required
+                        // Validate Sri Lankan NIC format (old or new)
+                        return NIC_REGEX.OLD.test(value) || NIC_REGEX.NEW.test(value);
+                    },
+                    message: 'Invalid NIC format. Use old format (9 digits + V) or new format (12 digits)',
+                },
+            ],
         },
         dob: {
             type: Date,
-            required: function () {
-                return this.role === 'INVESTIGATOR';
-            },
             select: false, // Don't include DOB in queries by default (sensitive data)
-            validate: {
-                validator: function (value) {
-                    if (!value) return true;
-                    // Ensure DOB is in the past
-                    return value < new Date();
+            validate: [
+                {
+                    validator: function (value) {
+                        // If role is INVESTIGATOR, DOB is required
+                        if (this.role === 'INVESTIGATOR') {
+                            return value != null;
+                        }
+                        // For other roles, DOB is optional
+                        return true;
+                    },
+                    message: 'Date of birth is required for INVESTIGATOR users',
                 },
-                message: 'Date of birth must be in the past',
-            },
+                {
+                    validator: function (value) {
+                        if (!value) return true;
+                        // Ensure DOB is in the past
+                        return value < new Date();
+                    },
+                    message: 'Date of birth must be in the past',
+                },
+            ],
         },
         lastLoginAt: {
             type: Date,
@@ -128,63 +156,6 @@ const userSchema = new mongoose.Schema(
         },
     }
 );
-
-// Indexes for performance and uniqueness
-userSchema.index({ email: 1 });
-userSchema.index({ nic: 1 }, { sparse: true });
-
-// Hash password before saving
-userSchema.pre('save', async function (next) {
-    // Only hash if password is modified
-    if (!this.isModified('password')) {
-        return next();
-    }
-
-    try {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        next();
-    } catch (error) {
-        next(error);
-    }
-});
-
-// Method to compare password
-userSchema.methods.comparePassword = async function (candidatePassword) {
-    try {
-        return await bcrypt.compare(candidatePassword, this.password);
-    } catch (error) {
-        throw new Error('Password comparison failed');
-    }
-};
-
-// Method to get user data with sensitive fields (admin only)
-userSchema.methods.toAdminJSON = function () {
-    const obj = this.toObject();
-
-    // For admin view, show full NIC (unmasked) but still exclude password
-    delete obj.password;
-
-    return obj;
-};
-
-// Helper function to mask NIC
-function maskNIC(nic) {
-    if (!nic) return nic;
-
-    const length = nic.length;
-
-    if (length === 10) {
-        // Old format: 123456789V -> 1234****9V
-        return nic.substring(0, 4) + '****' + nic.substring(8);
-    } else if (length === 12) {
-        // New format: 199812345678 -> 1998******78
-        return nic.substring(0, 4) + '******' + nic.substring(10);
-    }
-
-    // Fallback masking
-    return nic.substring(0, 4) + '****' + nic.substring(length - 2);
-}
 
 const User = mongoose.model('User', userSchema);
 
