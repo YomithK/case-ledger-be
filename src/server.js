@@ -32,6 +32,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Database connection
+//TODO: Remove duplicate Db connection
 const connectDB = async () => {
     try {
         mongoose.set('strictQuery', true);
