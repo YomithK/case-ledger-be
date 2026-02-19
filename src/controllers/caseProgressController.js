@@ -74,3 +74,39 @@ export const getCaseProgress = asyncHandler(async (req, res) => {
         data: { progress: progressDocs },
     });
 });
+
+/**
+ * @route   PUT /api/v1/progress/:id
+ * @desc    Update a progress entry
+ * @access  Admin, Assigned Investigator (Time-restricted)
+ */
+export const updateProgress = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updateData = req.body;
+    const { userId, role } = req.user;
+
+    const updatedEntry = await caseProgressService.updateProgressEntry(id, updateData, userId, role);
+
+    res.status(200).json({
+        success: true,
+        message: 'Progress update modified successfully',
+        data: { progress: updatedEntry },
+    });
+});
+
+/**
+ * @route   DELETE /api/v1/progress/:id
+ * @desc    Delete a progress entry
+ * @access  Admin only
+ */
+export const deleteProgress = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.user;
+
+    const result = await caseProgressService.deleteProgressEntry(id, role);
+
+    res.status(200).json({
+        success: true,
+        message: result.message,
+    });
+});
