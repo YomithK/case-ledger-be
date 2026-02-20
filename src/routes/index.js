@@ -2,6 +2,8 @@ import express from 'express';
 import authRoutes from './auth.routes.js';
 import userRoutes from './user.routes.js';
 import caseRoutes from './case.routes.js';
+import caseProgressRoutes from './caseProgress.routes.js';
+import progressRoutes from './progress.routes.js';
 
 const router = express.Router();
 
@@ -9,5 +11,13 @@ const router = express.Router();
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/cases', caseRoutes);
+
+// Case Progress routes
+// Nested: POST /cases/:id/progress  |  GET /cases/:id/progress
+router.use('/cases/:id/progress', caseProgressRoutes);
+
+// Standalone progress entry routes
+// PUT /progress/:id  |  DELETE /progress/:id
+router.use('/progress', progressRoutes);
 
 export default router;
