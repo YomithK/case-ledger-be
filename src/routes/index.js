@@ -6,6 +6,7 @@ import caseProgressRoutes from './caseProgress.routes.js';
 import progressRoutes from './progress.routes.js';
 import caseEvidenceRoutes from './caseEvidence.routes.js';
 import evidenceRoutes from './evidence.routes.js';
+import reportRoutes from './report.routes.js';
 
 const router = express.Router();
 
@@ -27,5 +28,8 @@ router.use('/progress', progressRoutes);
 // Standalone: GET/PUT/DELETE /evidence/:id  |  PUT /evidence/:id/verify
 router.use('/cases/:caseId/evidence', caseEvidenceRoutes);
 router.use('/evidence', evidenceRoutes);
+
+// Reports & Analytics routes
+router.use('/reports', reportRoutes);
 
 export default router;
