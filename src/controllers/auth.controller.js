@@ -7,9 +7,9 @@ import * as authService from '../services/auth.service.js';
  * @access  Public
  */
 export const register = asyncHandler(async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, role, phoneNumber, organizationName, nic, dob } = req.body;
 
-    const result = await authService.register({ name, email, password });
+    const result = await authService.register({ name, email, password, role, phoneNumber, organizationName, nic, dob });
 
     res.status(201).json({
         success: true,
