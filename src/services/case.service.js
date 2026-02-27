@@ -236,9 +236,9 @@ export const updateCase = async (caseId, updateData, userId, userRole) => {
  * @returns {Promise<Object>} Updated case
  */
 export const assignInvestigator = async (caseId, investigatorId, userRole) => {
-    // Validate: Only ADMIN can assign
-    if (userRole !== 'ADMIN') {
-        const error = new Error('Only administrators can assign investigators');
+    // Validate: Only ADMIN or NGO can assign
+    if (userRole !== 'ADMIN' && userRole !== 'NGO') {
+        const error = new Error('Only administrators or NGO users can assign investigators');
         error.statusCode = 403;
         throw error;
     }
