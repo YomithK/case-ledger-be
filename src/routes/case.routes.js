@@ -46,11 +46,11 @@ router.put('/:id', updateCaseValidation, caseController.updateCase);
 /**
  * @route   PUT /cases/:id/assign
  * @desc    Assign investigator to case
- * @access  ADMIN only
+ * @access  ADMIN or NGO
  */
 router.put(
     '/:id/assign',
-    authorize('ADMIN'),
+    authorize('ADMIN', 'NGO'),
     assignInvestigatorValidation,
     caseController.assignInvestigator
 );

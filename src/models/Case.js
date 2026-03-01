@@ -112,7 +112,7 @@ caseSchema.index({ caseNumber: 1 }, { unique: true });
 caseSchema.index({ reportedBy: 1 });
 
 // Pre-save hook to auto-generate case number
-caseSchema.pre('save', async function (next) {
+caseSchema.pre('validate', async function (next) {
     if (!this.caseNumber) {
         // Generate case number: CASE-YYYYMMDD-XXXX
         const date = new Date();
@@ -139,7 +139,6 @@ caseSchema.pre('save', async function (next) {
         // Generate case number with 4-digit sequence
         this.caseNumber = `CASE-${dateStr}-${String(sequence).padStart(4, '0')}`;
     }
-    next();
 });
 
 const Case = mongoose.model('Case', caseSchema);
