@@ -1,4 +1,4 @@
-# Case Ledger — Backend API
+# Case Ledger — Backend API - v1.0.0
 
 > REST API for the Human Rights Case Tracking System, built with Node.js, Express, and MongoDB.
 
