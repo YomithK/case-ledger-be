@@ -143,3 +143,45 @@ export const updateStatus = asyncHandler(async (req, res) => {
         data: { case: updatedCase },
     });
 });
+
+/**
+ * @route   GET /api/v1/cases/public
+ * @desc    Get all public, non-archived cases
+ * @access  Public (no authentication required)
+ */
+export const getPublicCases = asyncHandler(async (req, res) => {
+    const { page, limit } = req.query;
+
+    const result = await caseService.getPublicCases({ page, limit });
+
+    res.status(200).json({
+        success: true,
+        message: 'Public cases retrieved successfully',
+        data: {
+            cases: result.cases,
+            pagination: result.pagination,
+        },
+    });
+});
+
+/**
+ * @route   GET /api/v1/cases/associated
+ * @desc    Get cases associated with the authenticated user
+ *          (reportedBy | assignedInvestigator | relatedUsers.user)
+ * @access  Authenticated
+ */
+export const getAssociatedCases = asyncHandler(async (req, res) => {
+    const { page, limit } = req.query;
+    const { userId } = req.user;
+
+    const result = await caseService.getAssociatedCases(userId, { page, limit });
+
+    res.status(200).json({
+        success: true,
+        message: 'Associated cases retrieved successfully',
+        data: {
+            cases: result.cases,
+            pagination: result.pagination,
+        },
+    });
+});

@@ -29,7 +29,8 @@ export const findById = async (caseId, options = {}) => {
     if (options.populate) {
         query = query
             .populate('reportedBy', 'name email role organizationName')
-            .populate('assignedInvestigator', 'name email nic');
+            .populate('assignedInvestigator', 'name email nic')
+            .populate('relatedUsers.user', 'name email role');
     }
 
     return await query;
@@ -92,6 +93,7 @@ export const findAll = async (filters = {}, pagination = {}) => {
     return await Case.find(query)
         .populate('reportedBy', 'name email role organizationName')
         .populate('assignedInvestigator', 'name email nic')
+        .populate('relatedUsers.user', 'name email role')
         .sort(sort)
         .skip(skip)
         .limit(limit);
@@ -156,7 +158,8 @@ export const updateById = async (caseId, updateData, options = {}) => {
         runValidators: true,
     })
         .populate('reportedBy', 'name email role organizationName')
-        .populate('assignedInvestigator', 'name email nic');
+        .populate('assignedInvestigator', 'name email nic')
+        .populate('relatedUsers.user', 'name email role');
 };
 
 /**
@@ -188,7 +191,8 @@ export const assignInvestigator = async (caseId, investigatorId) => {
         { new: true, runValidators: true }
     )
         .populate('reportedBy', 'name email role organizationName')
-        .populate('assignedInvestigator', 'name email nic');
+        .populate('assignedInvestigator', 'name email nic')
+        .populate('relatedUsers.user', 'name email role');
 };
 
 /**
@@ -204,7 +208,8 @@ export const updateStatus = async (caseId, newStatus) => {
         { new: true, runValidators: true }
     )
         .populate('reportedBy', 'name email role organizationName')
-        .populate('assignedInvestigator', 'name email nic');
+        .populate('assignedInvestigator', 'name email nic')
+        .populate('relatedUsers.user', 'name email role');
 };
 
 /**
@@ -215,4 +220,78 @@ export const updateStatus = async (caseId, newStatus) => {
 export const caseExists = async (caseId) => {
     const caseDoc = await Case.findOne({ _id: caseId, isArchived: false });
     return !!caseDoc;
+};
+
+/**
+ * Find all public, non-archived cases with pagination
+ * @param {Object} pagination - Pagination options
+ * @returns {Promise<Array>} Array of case documents
+ */
+export const findPublicCases = async (pagination = {}) => {
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const skip = (page - 1) * limit;
+    const sort = pagination.sort || '-createdAt';
+
+    return await Case.find({ confidentialLevel: 'PUBLIC', isArchived: false })
+        .populate('reportedBy', 'name email role organizationName')
+        .sort(sort)
+        .skip(skip)
+        .limit(limit);
+};
+
+/**
+ * Count all public, non-archived cases
+ * @returns {Promise<number>} Count
+ */
+export const countPublicCases = async () => {
+    return await Case.countDocuments({ confidentialLevel: 'PUBLIC', isArchived: false });
+};
+
+/**
+ * Find cases associated with a user (reportedBy | assignedInvestigator | relatedUsers.user)
+ * Filtered entirely at DB level using $or.
+ * @param {string} userId - User ID
+ * @param {Object} pagination - Pagination options
+ * @returns {Promise<Array>} Array of case documents
+ */
+export const findAssociatedCases = async (userId, pagination = {}) => {
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const skip = (page - 1) * limit;
+    const sort = pagination.sort || '-createdAt';
+
+    const filter = {
+        isArchived: false,
+        $or: [
+            { reportedBy: userId },
+            { assignedInvestigator: userId },
+            { 'relatedUsers.user': userId },
+        ],
+    };
+
+    return await Case.find(filter)
+        .populate('reportedBy', 'name email role organizationName')
+        .populate('assignedInvestigator', 'name email nic')
+        .populate('relatedUsers.user', 'name email role')
+        .sort(sort)
+        .skip(skip)
+        .limit(limit);
+};
+
+/**
+ * Count cases associated with a user
+ * @param {string} userId - User ID
+ * @returns {Promise<number>} Count
+ */
+export const countAssociatedCases = async (userId) => {
+    const filter = {
+        isArchived: false,
+        $or: [
+            { reportedBy: userId },
+            { assignedInvestigator: userId },
+            { 'relatedUsers.user': userId },
+        ],
+    };
+    return await Case.countDocuments(filter);
 };

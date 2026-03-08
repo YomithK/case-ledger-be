@@ -98,6 +98,20 @@ const caseSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        relatedUsers: [
+            {
+                user: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'User',
+                    required: true,
+                },
+                role: {
+                    type: String,
+                    enum: ['VICTIM', 'WITNESS', 'COMPLAINANT'],
+                    required: true,
+                },
+            },
+        ],
     },
     {
         timestamps: true,
@@ -110,6 +124,7 @@ caseSchema.index({ assignedInvestigator: 1 });
 caseSchema.index({ createdAt: -1 });
 caseSchema.index({ caseNumber: 1 }, { unique: true });
 caseSchema.index({ reportedBy: 1 });
+caseSchema.index({ 'relatedUsers.user': 1 });
 
 // Pre-save hook to auto-generate case number
 caseSchema.pre('validate', async function (next) {

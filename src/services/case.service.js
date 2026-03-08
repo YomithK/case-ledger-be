@@ -1,6 +1,66 @@
 import * as caseRepository from '../repository/case.repository.js';
 import * as userRepository from '../repository/user.repository.js';
 
+const RELATED_USER_ROLES = ['VICTIM', 'WITNESS', 'COMPLAINANT'];
+
+/**
+ * Validate the relatedUsers array against business rules.
+ * Called from createCase when confidentialLevel is INTERNAL or CONFIDENTIAL.
+ * @param {Array}  relatedUsers - Array of { user, role } objects from request
+ * @param {string} reportedById - The ID of the user creating the case (cannot appear in relatedUsers)
+ */
+const validateRelatedUsers = async (relatedUsers, reportedById) => {
+    if (!relatedUsers || relatedUsers.length === 0) {
+        const error = new Error('relatedUsers is required for INTERNAL and CONFIDENTIAL cases');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // Check for duplicate user IDs
+    const userIds = relatedUsers.map((ru) => ru.user.toString());
+    const uniqueIds = new Set(userIds);
+    if (uniqueIds.size !== userIds.length) {
+        const error = new Error('Duplicate users are not allowed in relatedUsers');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // Check reporter is not in relatedUsers
+    if (uniqueIds.has(reportedById.toString())) {
+        const error = new Error('The case reporter (reportedBy) cannot be listed in relatedUsers');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    // Validate each user exists, is active, and has role USER
+    await Promise.all(
+        relatedUsers.map(async ({ user: userId, role }) => {
+            if (!RELATED_USER_ROLES.includes(role)) {
+                const error = new Error(
+                    `Invalid relatedUsers role "${role}". Must be one of: ${RELATED_USER_ROLES.join(', ')}`
+                );
+                error.statusCode = 400;
+                throw error;
+            }
+
+            const userDoc = await userRepository.findById(userId, { activeOnly: true });
+            if (!userDoc) {
+                const error = new Error(`User with id "${userId}" not found or is inactive`);
+                error.statusCode = 400;
+                throw error;
+            }
+
+            if (userDoc.role !== 'USER') {
+                const error = new Error(
+                    `User "${userDoc.name}" does not have role USER and cannot be added to relatedUsers`
+                );
+                error.statusCode = 400;
+                throw error;
+            }
+        })
+    );
+};
+
 /**
  * Status transition rules
  * Defines valid next statuses for each current status
@@ -41,11 +101,20 @@ export const createCase = async (caseData, userId, userRole) => {
         throw error;
     }
 
+    const { relatedUsers, ...restCaseData } = caseData;
+
+    // Business rule: relatedUsers required for INTERNAL and CONFIDENTIAL cases
+    const level = restCaseData.confidentialLevel || 'INTERNAL'; // schema default
+    if (level === 'INTERNAL' || level === 'CONFIDENTIAL') {
+        await validateRelatedUsers(relatedUsers, userId);
+    }
+
     // Set reportedBy to current user
     const newCaseData = {
-        ...caseData,
+        ...restCaseData,
         reportedBy: userId,
         status: 'REPORTED', // Default status
+        ...(relatedUsers && relatedUsers.length > 0 ? { relatedUsers } : {}),
     };
 
     // Create case
@@ -377,4 +446,64 @@ export const deleteCase = async (caseId, userRole) => {
     }
 
     return { message: 'Case deleted successfully' };
+};
+
+/**
+ * Get public cases (no auth required)
+ * Returns non-archived cases with confidentialLevel = PUBLIC
+ * @param {Object} pagination - Pagination options
+ * @returns {Promise<Object>} Cases with pagination metadata
+ */
+export const getPublicCases = async (pagination = {}) => {
+    const [cases, totalCount] = await Promise.all([
+        caseRepository.findPublicCases(pagination),
+        caseRepository.countPublicCases(),
+    ]);
+
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return {
+        cases,
+        pagination: {
+            currentPage: page,
+            totalPages,
+            totalCount,
+            limit,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
+        },
+    };
+};
+
+/**
+ * Get cases associated with the authenticated user
+ * Returns cases where user is: reportedBy | assignedInvestigator | relatedUsers.user
+ * All filtering is done at DB level.
+ * @param {string} userId - Authenticated user ID
+ * @param {Object} pagination - Pagination options
+ * @returns {Promise<Object>} Cases with pagination metadata
+ */
+export const getAssociatedCases = async (userId, pagination = {}) => {
+    const [cases, totalCount] = await Promise.all([
+        caseRepository.findAssociatedCases(userId, pagination),
+        caseRepository.countAssociatedCases(userId),
+    ]);
+
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return {
+        cases,
+        pagination: {
+            currentPage: page,
+            totalPages,
+            totalCount,
+            limit,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
+        },
+    };
 };

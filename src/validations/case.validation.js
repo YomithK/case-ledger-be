@@ -43,6 +43,29 @@ export const createCaseValidation = celebrate({
         confidentialLevel: Joi.string().valid('PUBLIC', 'INTERNAL', 'CONFIDENTIAL').optional().messages({
             'any.only': 'Confidential level must be one of: PUBLIC, INTERNAL, CONFIDENTIAL',
         }),
+        relatedUsers: Joi.array()
+            .items(
+                Joi.object({
+                    user: Joi.string()
+                        .regex(/^[0-9a-fA-F]{24}$/)
+                        .required()
+                        .messages({
+                            'string.pattern.base': 'Each relatedUsers entry must have a valid user ID',
+                            'any.required': 'User ID is required in each relatedUsers entry',
+                        }),
+                    role: Joi.string()
+                        .valid('VICTIM', 'WITNESS', 'COMPLAINANT')
+                        .required()
+                        .messages({
+                            'any.only': 'relatedUsers role must be one of: VICTIM, WITNESS, COMPLAINANT',
+                            'any.required': 'Role is required in each relatedUsers entry',
+                        }),
+                })
+            )
+            .optional()
+            .messages({
+                'array.base': 'relatedUsers must be an array',
+            }),
     }),
 });
 
@@ -199,6 +222,40 @@ export const caseIdValidation = celebrate({
         id: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
             'string.pattern.base': 'Invalid case ID format',
             'any.required': 'Case ID is required',
+        }),
+    }),
+});
+
+/**
+ * Validation for GET /cases/public – optional pagination query params
+ */
+export const getPublicCasesValidation = celebrate({
+    [Segments.QUERY]: Joi.object({
+        page: Joi.number().integer().min(1).optional().messages({
+            'number.base': 'Page must be a number',
+            'number.min': 'Page must be at least 1',
+        }),
+        limit: Joi.number().integer().min(1).max(100).optional().messages({
+            'number.base': 'Limit must be a number',
+            'number.min': 'Limit must be at least 1',
+            'number.max': 'Limit cannot exceed 100',
+        }),
+    }),
+});
+
+/**
+ * Validation for GET /cases/associated – optional pagination query params
+ */
+export const associatedCasesValidation = celebrate({
+    [Segments.QUERY]: Joi.object({
+        page: Joi.number().integer().min(1).optional().messages({
+            'number.base': 'Page must be a number',
+            'number.min': 'Page must be at least 1',
+        }),
+        limit: Joi.number().integer().min(1).max(100).optional().messages({
+            'number.base': 'Limit must be a number',
+            'number.min': 'Limit must be at least 1',
+            'number.max': 'Limit cannot exceed 100',
         }),
     }),
 });

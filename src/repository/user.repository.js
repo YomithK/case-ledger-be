@@ -147,3 +147,24 @@ export const nicExists = async (nic) => {
     const user = await User.findOne({ nic: nic.toUpperCase() });
     return !!user;
 };
+
+/**
+ * Find assignable users (role = USER) with optional search by name or email
+ * @param {string} search - Optional search keyword
+ * @param {number} limit - Max number of results (capped at 50)
+ * @returns {Promise<Array>} Array of minimal user documents (_id, name, email)
+ */
+export const findAssignableUsers = async (search, limit = 10) => {
+    const query = { role: 'USER', isActive: true };
+
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+        ];
+    }
+
+    return await User.find(query)
+        .select('_id name email')
+        .limit(Math.min(parseInt(limit) || 10, 50));
+};
