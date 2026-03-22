@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import * as caseService from '../services/case.service.js';
+import { sendSuccess } from '../utils/response.js';
 
 /**
  * @route   POST /api/v1/cases
@@ -12,11 +13,7 @@ export const createCase = asyncHandler(async (req, res) => {
 
     const createdCase = await caseService.createCase(caseData, userId, role);
 
-    res.status(201).json({
-        success: true,
-        message: 'Case created successfully',
-        data: { case: createdCase },
-    });
+    sendSuccess(res, 201, 'Case created successfully', { case: createdCase });
 });
 
 /**
@@ -28,27 +25,14 @@ export const getCases = asyncHandler(async (req, res) => {
     const { status, priority, category, page, limit, search } = req.query;
     const { userId, role } = req.user;
 
-    const filters = {
-        status,
-        priority,
-        category,
-        search,
-    };
-
-    const pagination = {
-        page,
-        limit,
-    };
+    const filters = { status, priority, category, search };
+    const pagination = { page, limit };
 
     const result = await caseService.getCases(filters, pagination, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Cases retrieved successfully',
-        data: {
-            cases: result.cases,
-            pagination: result.pagination,
-        },
+    sendSuccess(res, 200, 'Cases retrieved successfully', {
+        cases: result.cases,
+        pagination: result.pagination,
     });
 });
 
@@ -63,11 +47,7 @@ export const getCaseById = asyncHandler(async (req, res) => {
 
     const caseData = await caseService.getCaseById(id, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Case retrieved successfully',
-        data: { case: caseData },
-    });
+    sendSuccess(res, 200, 'Case retrieved successfully', { case: caseData });
 });
 
 /**
@@ -82,11 +62,7 @@ export const updateCase = asyncHandler(async (req, res) => {
 
     const updatedCase = await caseService.updateCase(id, updateData, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Case updated successfully',
-        data: { case: updatedCase },
-    });
+    sendSuccess(res, 200, 'Case updated successfully', { case: updatedCase });
 });
 
 /**
@@ -100,10 +76,7 @@ export const deleteCase = asyncHandler(async (req, res) => {
 
     const result = await caseService.deleteCase(id, role);
 
-    res.status(200).json({
-        success: true,
-        message: result.message,
-    });
+    sendSuccess(res, 200, result.message, null);
 });
 
 /**
@@ -118,11 +91,7 @@ export const assignInvestigator = asyncHandler(async (req, res) => {
 
     const updatedCase = await caseService.assignInvestigator(id, investigatorId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Investigator assigned successfully',
-        data: { case: updatedCase },
-    });
+    sendSuccess(res, 200, 'Investigator assigned successfully', { case: updatedCase });
 });
 
 /**
@@ -137,9 +106,39 @@ export const updateStatus = asyncHandler(async (req, res) => {
 
     const updatedCase = await caseService.updateStatus(id, status, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Case status updated successfully',
-        data: { case: updatedCase },
+    sendSuccess(res, 200, 'Case status updated successfully', { case: updatedCase });
+});
+
+/**
+ * @route   GET /api/v1/cases/public
+ * @desc    Get all public, non-archived cases
+ * @access  Public (no authentication required)
+ */
+export const getPublicCases = asyncHandler(async (req, res) => {
+    const { page, limit } = req.query;
+
+    const result = await caseService.getPublicCases({ page, limit });
+
+    sendSuccess(res, 200, 'Public cases retrieved successfully', {
+        cases: result.cases,
+        pagination: result.pagination,
+    });
+});
+
+/**
+ * @route   GET /api/v1/cases/associated
+ * @desc    Get cases associated with the authenticated user
+ *          (reportedBy | assignedInvestigator | relatedUsers.user)
+ * @access  Authenticated
+ */
+export const getAssociatedCases = asyncHandler(async (req, res) => {
+    const { page, limit } = req.query;
+    const { userId } = req.user;
+
+    const result = await caseService.getAssociatedCases(userId, { page, limit });
+
+    sendSuccess(res, 200, 'Associated cases retrieved successfully', {
+        cases: result.cases,
+        pagination: result.pagination,
     });
 });

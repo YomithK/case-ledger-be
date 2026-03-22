@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import * as authService from '../services/auth.service.js';
+import { sendSuccess } from '../utils/response.js';
 
 /**
  * @route   POST /api/v1/auth/register
@@ -11,14 +12,7 @@ export const register = asyncHandler(async (req, res) => {
 
     const result = await authService.register({ name, email, password, role, phoneNumber, organizationName, nic, dob });
 
-    res.status(201).json({
-        success: true,
-        message: 'User registered successfully',
-        data: {
-            user: result.user,
-            token: result.token,
-        },
-    });
+    sendSuccess(res, 201, 'User registered successfully', { user: result.user, token: result.token });
 });
 
 /**
@@ -31,12 +25,5 @@ export const login = asyncHandler(async (req, res) => {
 
     const result = await authService.login(email, password);
 
-    res.status(200).json({
-        success: true,
-        message: 'Login successful',
-        data: {
-            user: result.user,
-            token: result.token,
-        },
-    });
+    sendSuccess(res, 200, 'Login successful', { user: result.user, token: result.token });
 });
