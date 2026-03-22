@@ -5,6 +5,8 @@ import mongoose from 'mongoose';
 import { db, server } from './config/index.js';
 import routes from './routes/index.js';
 import { errorHandler, notFound } from './middleware/error.middleware.js';
+import { requestLogger } from './middleware/requestLogger.middleware.js';
+import logger from './utils/logger.js';
 
 const app = express();
 
@@ -12,13 +14,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(requestLogger);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.status(200).json({
         success: true,
         message: 'Server is running',
-        timestamp: new Date().toISOString(),
+        data: { timestamp: new Date().toISOString() },
     });
 });
 
@@ -45,9 +48,9 @@ const connectDB = async () => {
             socketTimeoutMS: 45000,
         });
 
-        console.log(`MongoDB Connected: ${mongoose.connection.host}`);
+        logger.info(`MongoDB Connected: ${mongoose.connection.host}`);
     } catch (error) {
-        console.error('MongoDB Connection Error:', error.message);
+        logger.error(`MongoDB Connection Error: ${error.message}`);
         process.exit(1);
     }
 };
@@ -57,8 +60,8 @@ const startServer = async () => {
     await connectDB();
 
     app.listen(server.port, () => {
-        console.log(`Server running on port ${server.port} in ${server.nodeEnv} mode`);
-        console.log(`API Base URL: http://localhost:${server.port}/api/v1`);
+        logger.info(`Server running on port ${server.port} in ${server.nodeEnv} mode`);
+        logger.info(`API Base URL: http://localhost:${server.port}/api/v1`);
     });
 };
 

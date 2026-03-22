@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import * as evidenceService from '../services/evidence.service.js';
+import { sendSuccess, sendError } from '../utils/response.js';
 
 /**
  * @route   POST /api/v1/cases/:caseId/evidence
@@ -10,10 +11,7 @@ export const uploadEvidence = asyncHandler(async (req, res) => {
     const { caseId } = req.params;
 
     if (!req.file) {
-        return res.status(400).json({
-            success: false,
-            message: 'No file uploaded. Please attach a file with field name "file".',
-        });
+        return sendError(res, 400, 'No file uploaded. Please attach a file with field name "file".');
     }
 
     const evidence = await evidenceService.uploadEvidence(
@@ -23,11 +21,7 @@ export const uploadEvidence = asyncHandler(async (req, res) => {
         req.user
     );
 
-    res.status(201).json({
-        success: true,
-        message: 'Evidence uploaded successfully',
-        data: { evidence },
-    });
+    sendSuccess(res, 201, 'Evidence uploaded successfully', { evidence });
 });
 
 /**
@@ -40,17 +34,13 @@ export const getEvidenceByCase = asyncHandler(async (req, res) => {
 
     const result = await evidenceService.getEvidenceByCase(caseId, req.query, req.user);
 
-    res.status(200).json({
-        success: true,
-        message: 'Evidence retrieved successfully',
-        data: {
-            evidence: result.evidence,
-            pagination: {
-                total: result.total,
-                page: result.page,
-                limit: result.limit,
-                totalPages: Math.ceil(result.total / result.limit),
-            },
+    sendSuccess(res, 200, 'Evidence retrieved successfully', {
+        evidence: result.evidence,
+        pagination: {
+            total: result.total,
+            page: result.page,
+            limit: result.limit,
+            totalPages: Math.ceil(result.total / result.limit),
         },
     });
 });
@@ -65,11 +55,7 @@ export const getEvidenceById = asyncHandler(async (req, res) => {
 
     const evidence = await evidenceService.getEvidenceById(id, req.user);
 
-    res.status(200).json({
-        success: true,
-        message: 'Evidence retrieved successfully',
-        data: { evidence },
-    });
+    sendSuccess(res, 200, 'Evidence retrieved successfully', { evidence });
 });
 
 /**
@@ -82,11 +68,7 @@ export const updateEvidence = asyncHandler(async (req, res) => {
 
     const evidence = await evidenceService.updateEvidence(id, req.body, req.user);
 
-    res.status(200).json({
-        success: true,
-        message: 'Evidence updated successfully',
-        data: { evidence },
-    });
+    sendSuccess(res, 200, 'Evidence updated successfully', { evidence });
 });
 
 /**
@@ -99,10 +81,7 @@ export const deleteEvidence = asyncHandler(async (req, res) => {
 
     const result = await evidenceService.deleteEvidence(id, req.user);
 
-    res.status(200).json({
-        success: true,
-        message: result.message,
-    });
+    sendSuccess(res, 200, result.message, null);
 });
 
 /**
@@ -115,9 +94,5 @@ export const verifyEvidence = asyncHandler(async (req, res) => {
 
     const evidence = await evidenceService.verifyEvidence(id, req.user);
 
-    res.status(200).json({
-        success: true,
-        message: 'Evidence verified successfully',
-        data: { evidence },
-    });
+    sendSuccess(res, 200, 'Evidence verified successfully', { evidence });
 });

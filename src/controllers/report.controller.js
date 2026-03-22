@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import * as reportService from '../services/report.service.js';
+import { sendSuccess } from '../utils/response.js';
 
 // ─────────────────────────────────────────────────────────────
 // 1. DASHBOARD
@@ -14,11 +15,7 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
     const { userId, role } = req.user;
     const data = await reportService.getDashboardSummary(userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Dashboard summary retrieved successfully',
-        data,
-    });
+    sendSuccess(res, 200, 'Dashboard summary retrieved successfully', data);
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -36,11 +33,7 @@ export const getCasesByStatus = asyncHandler(async (req, res) => {
 
     const data = await reportService.getCasesByStatus(filters, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Cases by status retrieved successfully',
-        data,
-    });
+    sendSuccess(res, 200, 'Cases by status retrieved successfully', data);
 });
 
 /**
@@ -54,11 +47,7 @@ export const getCasesByPriority = asyncHandler(async (req, res) => {
 
     const data = await reportService.getCasesByPriority(filters, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Cases by priority retrieved successfully',
-        data,
-    });
+    sendSuccess(res, 200, 'Cases by priority retrieved successfully', data);
 });
 
 /**
@@ -72,11 +61,7 @@ export const getCasesByCategory = asyncHandler(async (req, res) => {
 
     const data = await reportService.getCasesByCategory(filters, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Cases by category retrieved successfully',
-        data,
-    });
+    sendSuccess(res, 200, 'Cases by category retrieved successfully', data);
 });
 
 /**
@@ -90,11 +75,7 @@ export const getCasesMonthly = asyncHandler(async (req, res) => {
 
     const data = await reportService.getCasesMonthly(filters, userId, role, year ? parseInt(year) : null);
 
-    res.status(200).json({
-        success: true,
-        message: 'Monthly case trends retrieved successfully',
-        data,
-    });
+    sendSuccess(res, 200, 'Monthly case trends retrieved successfully', data);
 });
 
 /**
@@ -108,11 +89,7 @@ export const getCasesYearly = asyncHandler(async (req, res) => {
 
     const data = await reportService.getCasesYearly(filters, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Yearly case trends retrieved successfully',
-        data,
-    });
+    sendSuccess(res, 200, 'Yearly case trends retrieved successfully', data);
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -130,11 +107,7 @@ export const getAverageResolutionTime = asyncHandler(async (req, res) => {
 
     const data = await reportService.getAverageResolutionTime(filters, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Average resolution time retrieved successfully',
-        data,
-    });
+    sendSuccess(res, 200, 'Average resolution time retrieved successfully', data);
 });
 
 /**
@@ -153,11 +126,7 @@ export const getLongestOpenCases = asyncHandler(async (req, res) => {
         limit ? parseInt(limit) : 10
     );
 
-    res.status(200).json({
-        success: true,
-        message: 'Longest open cases retrieved successfully',
-        data,
-    });
+    sendSuccess(res, 200, 'Longest open cases retrieved successfully', data);
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -174,11 +143,7 @@ export const getInvestigatorPerformance = asyncHandler(async (req, res) => {
 
     const data = await reportService.getInvestigatorPerformance(id, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Investigator performance retrieved successfully',
-        data,
-    });
+    sendSuccess(res, 200, 'Investigator performance retrieved successfully', data);
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -193,11 +158,7 @@ export const getEvidenceDistribution = asyncHandler(async (req, res) => {
     const { userId, role } = req.user;
     const data = await reportService.getEvidenceDistribution(userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Evidence distribution retrieved successfully',
-        data,
-    });
+    sendSuccess(res, 200, 'Evidence distribution retrieved successfully', data);
 });
 
 /**
@@ -208,11 +169,7 @@ export const getEvidenceVerificationRatio = asyncHandler(async (req, res) => {
     const { userId, role } = req.user;
     const data = await reportService.getEvidenceVerificationRatio(userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Evidence verification ratio retrieved successfully',
-        data,
-    });
+    sendSuccess(res, 200, 'Evidence verification ratio retrieved successfully', data);
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -228,11 +185,7 @@ export const createReport = asyncHandler(async (req, res) => {
     const { userId, role } = req.user;
     const report = await reportService.createReport(req.body, userId, role);
 
-    res.status(201).json({
-        success: true,
-        message: 'Report created successfully',
-        data: { report },
-    });
+    sendSuccess(res, 201, 'Report created successfully', { report });
 });
 
 /**
@@ -248,13 +201,9 @@ export const getReports = asyncHandler(async (req, res) => {
 
     const result = await reportService.getReports(filters, pagination, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Reports retrieved successfully',
-        data: {
-            reports: result.reports,
-            pagination: result.pagination,
-        },
+    sendSuccess(res, 200, 'Reports retrieved successfully', {
+        reports: result.reports,
+        pagination: result.pagination,
     });
 });
 
@@ -269,11 +218,7 @@ export const getReportById = asyncHandler(async (req, res) => {
 
     const report = await reportService.getReportById(id, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Report retrieved successfully',
-        data: { report },
-    });
+    sendSuccess(res, 200, 'Report retrieved successfully', { report });
 });
 
 /**
@@ -287,11 +232,7 @@ export const updateReport = asyncHandler(async (req, res) => {
 
     const report = await reportService.updateReport(id, req.body, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Report updated successfully',
-        data: { report },
-    });
+    sendSuccess(res, 200, 'Report updated successfully', { report });
 });
 
 /**
@@ -305,8 +246,5 @@ export const deleteReport = asyncHandler(async (req, res) => {
 
     const result = await reportService.deleteReport(id, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: result.message,
-    });
+    sendSuccess(res, 200, result.message, null);
 });
