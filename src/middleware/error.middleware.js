@@ -63,13 +63,8 @@ export const errorHandler = (err, req, res, next) => {
     // Log error for debugging
     logger.error(message, { stack: err.stack, statusCode });
 
-    // Include stack trace in development mode only
-    if (server.nodeEnv === 'development' && errors === null) {
-        return res.status(statusCode).json({ success: false, message, stack: err.stack });
-    }
-
     if (server.nodeEnv === 'development' && errors !== null) {
-        return res.status(statusCode).json({ success: false, message, errors, stack: err.stack });
+        return res.status(statusCode).json({ success: false, message, errors });
     }
 
     sendError(res, statusCode, message, errors);
