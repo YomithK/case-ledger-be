@@ -1,38 +1,8 @@
 import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
 import mongoose from 'mongoose';
 import { db, server } from './config/index.js';
-import routes from './routes/index.js';
-import { errorHandler, notFound } from './middleware/error.middleware.js';
-import { requestLogger } from './middleware/requestLogger.middleware.js';
+import app from './app.js';
 import logger from './utils/logger.js';
-
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(requestLogger);
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: 'Server is running',
-        data: { timestamp: new Date().toISOString() },
-    });
-});
-
-// API routes with versioning
-app.use('/api/v1', routes);
-
-// 404 handler
-app.use(notFound);
-
-// Error handling middleware (must be last)
-app.use(errorHandler);
 
 // Database connection
 //TODO: Remove duplicate Db connection
