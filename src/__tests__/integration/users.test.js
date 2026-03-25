@@ -152,3 +152,4 @@ describe('User Routes - Integration', () => {
         });
     });
 });
+// Coverage: GET /users, GET /users/:id, PUT /users/:id, PUT /users/:id/role, DELETE /users/:id
