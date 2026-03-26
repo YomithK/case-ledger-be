@@ -228,3 +228,4 @@ describe('Case Routes - Integration', () => {
         });
     });
 });
+// Coverage: POST/GET/PUT/DELETE /cases, assign investigator, status transitions
