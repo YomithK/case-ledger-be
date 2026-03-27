@@ -157,3 +157,4 @@ describe('Case Progress Routes - Integration', () => {
         });
     });
 });
+// Coverage: POST/GET /cases/:id/progress, PUT/DELETE /progress/:id with time window
