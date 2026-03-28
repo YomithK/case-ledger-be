@@ -214,3 +214,4 @@ describe('Evidence Routes - Integration', () => {
         });
     });
 });
+// Coverage: POST/GET /cases/:caseId/evidence, GET/PUT/DELETE/verify /evidence/:id
