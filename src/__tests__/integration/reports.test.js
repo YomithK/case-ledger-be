@@ -267,3 +267,4 @@ describe('Report Routes - Integration', () => {
         });
     });
 });
+// Coverage: dashboard summary, case analytics, resolution, investigator performance, evidence analytics, saved reports CRUD
