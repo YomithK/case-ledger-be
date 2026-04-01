@@ -7,6 +7,7 @@ import progressRoutes from './progress.routes.js';
 import caseEvidenceRoutes from './caseEvidence.routes.js';
 import evidenceRoutes from './evidence.routes.js';
 import reportRoutes from './report.routes.js';
+import refRoutes from './ref.routes.js';
 
 const router = express.Router();
 
@@ -31,5 +32,8 @@ router.use('/evidence', evidenceRoutes);
 
 // Reports & Analytics routes
 router.use('/reports', reportRoutes);
+
+// Reference data routes
+router.use('/ref', refRoutes);
 
 export default router;
