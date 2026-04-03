@@ -55,6 +55,14 @@ export const getDashboardSummaryPipeline = () => [
                     },
                 },
             ],
+            priorityCounts: [
+                {
+                    $group: {
+                        _id: '$priority',
+                        count: { $sum: 1 },
+                    },
+                },
+            ],
             totalCases: [
                 { $count: 'count' },
             ],
@@ -64,6 +72,7 @@ export const getDashboardSummaryPipeline = () => [
         $project: {
             totalCases: { $arrayElemAt: ['$totalCases.count', 0] },
             statusBreakdown: '$caseCounts',
+            priorityBreakdown: '$priorityCounts',
         },
     },
 ];

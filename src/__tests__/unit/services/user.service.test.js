@@ -20,6 +20,62 @@ const mockUser = {
 describe('user service', () => {
     beforeEach(() => jest.clearAllMocks());
 
+    describe('getAllUsers', () => {
+        it('should return users with pagination metadata', async () => {
+            userRepository.findAll.mockResolvedValue([mockUser]);
+            userRepository.countUsers.mockResolvedValue(1);
+
+            const result = await userService.getAllUsers(false, {}, { page: 1, limit: 10 });
+
+            expect(result).toHaveProperty('users');
+            expect(result).toHaveProperty('pagination');
+            expect(result.pagination).toMatchObject({
+                currentPage: 1,
+                totalPages: 1,
+                totalCount: 1,
+                limit: 10,
+                hasNextPage: false,
+                hasPrevPage: false,
+            });
+        });
+
+        it('should include inactive users when no isActive filter applied', async () => {
+            const inactiveUser = { ...mockUser, isActive: false, toObject: jest.fn().mockReturnValue({ isActive: false }) };
+            userRepository.findAll.mockResolvedValue([mockUser, inactiveUser]);
+            userRepository.countUsers.mockResolvedValue(2);
+
+            const result = await userService.getAllUsers(false, {}, {});
+
+            expect(result.users).toHaveLength(2);
+        });
+
+        it('should pass filters through to repository', async () => {
+            userRepository.findAll.mockResolvedValue([mockUser]);
+            userRepository.countUsers.mockResolvedValue(1);
+
+            await userService.getAllUsers(false, { role: 'INVESTIGATOR', search: 'John' }, { page: 1, limit: 5 });
+
+            expect(userRepository.findAll).toHaveBeenCalledWith(
+                expect.objectContaining({ role: 'INVESTIGATOR', search: 'John' }),
+                expect.any(Object),
+                expect.objectContaining({ page: 1, limit: 5 }),
+            );
+        });
+
+        it('should strip password from results when isAdmin=true', async () => {
+            const adminUser = {
+                ...mockUser,
+                toObject: jest.fn().mockReturnValue({ _id: userId, name: 'Test User', password: 'hashed' }),
+            };
+            userRepository.findAll.mockResolvedValue([adminUser]);
+            userRepository.countUsers.mockResolvedValue(1);
+
+            const result = await userService.getAllUsers(true, {}, {});
+
+            expect(result.users[0].password).toBeUndefined();
+        });
+    });
+
     describe('getUserById', () => {
         it('should throw 404 when user not found', async () => {
             userRepository.findById.mockResolvedValue(null);

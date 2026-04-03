@@ -53,9 +53,17 @@ describe('report service', () => {
                     { _id: 'CLOSED', count: 2 },
                     { _id: 'REJECTED', count: 1 },
                 ],
+                priorityBreakdown: [
+                    { _id: 'HIGH', count: 5 },
+                    { _id: 'LOW', count: 5 },
+                ],
             }]);
             Evidence.countDocuments.mockResolvedValue(25);
-            User.countDocuments.mockResolvedValueOnce(5).mockResolvedValueOnce(8);
+            // Now called 3 times: totalInvestigators, totalNGOs, totalUsers
+            User.countDocuments
+                .mockResolvedValueOnce(5)
+                .mockResolvedValueOnce(8)
+                .mockResolvedValueOnce(15);
 
             const result = await reportService.getDashboardSummary(adminId, 'ADMIN');
 
@@ -63,6 +71,11 @@ describe('report service', () => {
             expect(result).toHaveProperty('totalEvidence', 25);
             expect(result).toHaveProperty('totalInvestigators', 5);
             expect(result).toHaveProperty('totalNGOs', 8);
+            expect(result).toHaveProperty('totalUsers', 15);
+            expect(Array.isArray(result.casesByStatus)).toBe(true);
+            expect(Array.isArray(result.casesByPriority)).toBe(true);
+            expect(result.casesByStatus[0]).toHaveProperty('status');
+            expect(result.casesByPriority[0]).toHaveProperty('priority');
         });
     });
 
@@ -140,14 +153,21 @@ describe('report service', () => {
                 .rejects.toMatchObject({ statusCode: 403 });
         });
 
-        it('should create report for ADMIN', async () => {
-            const mockReport = { _id: reportId, name: 'Test Report', reportType: 'DASHBOARD' };
+        it('should create report with reportData snapshot for ADMIN', async () => {
+            // Mock data needed by generateReportData for CASE_ANALYTICS type
+            Case.aggregate.mockResolvedValue([]);
+            const mockReport = { _id: reportId, name: 'Test Report', reportType: 'CASE_ANALYTICS', reportData: { byStatus: [] } };
             reportRepository.create.mockResolvedValue(mockReport);
 
             const result = await reportService.createReport(
-                { name: 'Test Report', reportType: 'DASHBOARD' }, adminId, 'ADMIN'
+                { name: 'Test Report', reportType: 'CASE_ANALYTICS' }, adminId, 'ADMIN'
             );
+
             expect(result).toHaveProperty('name', 'Test Report');
+            // Verify create was called with reportData and generatedAt
+            const createArg = reportRepository.create.mock.calls[0][0];
+            expect(createArg).toHaveProperty('reportData');
+            expect(createArg).toHaveProperty('generatedAt');
         });
     });
 

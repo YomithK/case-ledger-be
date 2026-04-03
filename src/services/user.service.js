@@ -1,25 +1,49 @@
 import * as userRepository from '../repository/user.repository.js';
 
 /**
- * Get all users (admin only)
+ * Get all users (admin only) with pagination and optional filters
  * Returns full NIC (unmasked) and DOB for admin users
+ * @param {boolean} isAdmin - Whether the requester is an admin
+ * @param {Object} filters - Optional filters
+ * @param {boolean|undefined} filters.isActive - Filter by active status (undefined = all)
+ * @param {string} filters.role - Filter by role
+ * @param {string} filters.search - Search by name
+ * @param {Object} pagination - Pagination options
+ * @param {number} pagination.page - Page number
+ * @param {number} pagination.limit - Items per page
  */
-export const getAllUsers = async (isAdmin = false) => {
-    // Fetch all active users
-    const users = await userRepository.findAllActive({
-        includeSensitive: isAdmin,
-    });
+export const getAllUsers = async (isAdmin = false, filters = {}, pagination = {}) => {
+    const options = { includeSensitive: isAdmin };
 
-    // For admin, return unmasked data
-    if (isAdmin) {
-        return users.map((user) => {
+    const [users, totalCount] = await Promise.all([
+        userRepository.findAll(filters, options, pagination),
+        userRepository.countUsers(filters),
+    ]);
+
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // For admin, strip password from plain objects
+    const result = isAdmin
+        ? users.map((user) => {
             const userObj = user.toObject();
-            delete userObj.password; // Never return password
+            delete userObj.password;
             return userObj;
-        });
-    }
+        })
+        : users;
 
-    return users;
+    return {
+        users: result,
+        pagination: {
+            currentPage: page,
+            totalPages,
+            totalCount,
+            limit,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
+        },
+    };
 };
 
 /**

@@ -72,6 +72,88 @@ export const findAllActive = async (options = {}) => {
 };
 
 /**
+ * Find all users with optional filters and pagination
+ * @param {Object} filters - Filter criteria
+ * @param {boolean|undefined} filters.isActive - Filter by active status (undefined = all users)
+ * @param {string} filters.role - Filter by role (ADMIN, INVESTIGATOR, NGO)
+ * @param {string} filters.search - Search by name (case-insensitive regex)
+ * @param {Object} options - Query options
+ * @param {boolean} options.includeSensitive - Include NIC and DOB fields
+ * @param {Object} pagination - Pagination options
+ * @param {number} pagination.page - Page number (default: 1)
+ * @param {number} pagination.limit - Items per page (default: 10)
+ * @returns {Promise<Array>} Array of user documents
+ */
+export const findAll = async (filters = {}, options = {}, pagination = {}) => {
+    const query = {};
+
+    if (filters.isActive !== undefined) {
+        query.isActive = filters.isActive;
+    }
+
+    if (filters.role) {
+        query.role = filters.role;
+    }
+
+    if (filters.search) {
+        query.name = { $regex: filters.search, $options: 'i' };
+    }
+
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    let dbQuery = User.find(query).sort('-createdAt').skip(skip).limit(limit);
+
+    if (options.includeSensitive) {
+        dbQuery = dbQuery.select('+nic +dob');
+    }
+
+    return await dbQuery;
+};
+
+/**
+ * Count users matching filters
+ * @param {Object} filters - Filter criteria (same shape as findAll)
+ * @returns {Promise<number>} Count of matching users
+ */
+export const countUsers = async (filters = {}) => {
+    const query = {};
+
+    if (filters.isActive !== undefined) {
+        query.isActive = filters.isActive;
+    }
+
+    if (filters.role) {
+        query.role = filters.role;
+    }
+
+    if (filters.search) {
+        query.name = { $regex: filters.search, $options: 'i' };
+    }
+
+    return await User.countDocuments(query);
+};
+
+/**
+ * Find investigators available for case assignment
+ * @param {string} search - Optional name search keyword
+ * @param {number} limit - Max results (default 10, capped at 50)
+ * @returns {Promise<Array>} Array of investigator user documents
+ */
+export const findAssignableUsers = async (search, limit) => {
+    const query = { role: 'INVESTIGATOR', isActive: true };
+
+    if (search) {
+        query.name = { $regex: search, $options: 'i' };
+    }
+
+    const cap = Math.min(parseInt(limit) || 10, 50);
+
+    return await User.find(query).select('name email phoneNumber').limit(cap);
+};
+
+/**
  * Create new user
  * @param {Object} userData - User data
  * @returns {Promise<Object>} Created user document

@@ -68,6 +68,13 @@ const reportSchema = new mongoose.Schema(
         lastGeneratedAt: {
             type: Date,
         },
+        reportData: {
+            type: mongoose.Schema.Types.Mixed,
+            default: null,
+        },
+        generatedAt: {
+            type: Date,
+        },
     },
     {
         timestamps: true,

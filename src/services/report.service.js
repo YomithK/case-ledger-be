@@ -49,19 +49,31 @@ export const getDashboardSummary = async (userId, role) => {
     }
 
     // Run case aggregation + evidence/user counts in parallel
-    const [caseResult, totalEvidence, totalInvestigators, totalNGOs] = await Promise.all([
+    const [caseResult, totalEvidence, totalInvestigators, totalNGOs, totalUsers] = await Promise.all([
         Case.aggregate(agg.getDashboardSummaryPipeline()),
         Evidence.countDocuments({ isArchived: false }),
         User.countDocuments({ role: 'INVESTIGATOR', isActive: true }),
         User.countDocuments({ role: 'NGO', isActive: true }),
+        User.countDocuments({ isActive: true }),
     ]);
 
-    // Flatten status breakdown
+    // Flatten status breakdown for scalar fields
     const caseData = caseResult[0] ?? {};
     const statusBreakdown = (caseData.statusBreakdown || []).reduce((acc, item) => {
         acc[item._id] = item.count;
         return acc;
     }, {});
+
+    // Expose pie-chart-friendly arrays
+    const casesByStatus = (caseData.statusBreakdown || []).map((item) => ({
+        status: item._id,
+        count: item.count,
+    }));
+
+    const casesByPriority = (caseData.priorityBreakdown || []).map((item) => ({
+        priority: item._id,
+        count: item.count,
+    }));
 
     return {
         totalCases: caseData.totalCases ?? 0,
@@ -74,6 +86,9 @@ export const getDashboardSummary = async (userId, role) => {
         totalEvidence,
         totalInvestigators,
         totalNGOs,
+        totalUsers,
+        casesByStatus,
+        casesByPriority,
     };
 };
 
@@ -240,6 +255,71 @@ export const getEvidenceVerificationRatio = async (userId, role) => {
 // 6. SAVED REPORT CRUD
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * Execute the relevant analytics queries for a report type and return a data snapshot.
+ */
+const generateReportData = async (reportType, filters = {}, userId, role) => {
+    switch (reportType) {
+        case 'DASHBOARD': {
+            const [caseResult, totalEvidence, totalInvestigators, totalNGOs, totalUsers] = await Promise.all([
+                Case.aggregate(agg.getDashboardSummaryPipeline()),
+                Evidence.countDocuments({ isArchived: false }),
+                User.countDocuments({ role: 'INVESTIGATOR', isActive: true }),
+                User.countDocuments({ role: 'NGO', isActive: true }),
+                User.countDocuments({ isActive: true }),
+            ]);
+            const caseData = caseResult[0] ?? {};
+            const statusBreakdown = (caseData.statusBreakdown || []).reduce((acc, item) => {
+                acc[item._id] = item.count;
+                return acc;
+            }, {});
+            return {
+                totalCases: caseData.totalCases ?? 0,
+                activeCases: (statusBreakdown['REPORTED'] ?? 0) +
+                    (statusBreakdown['UNDER_INVESTIGATION'] ?? 0) +
+                    (statusBreakdown['EVIDENCE_COLLECTED'] ?? 0),
+                closedCases: (statusBreakdown['CLOSED'] ?? 0) + (statusBreakdown['RESOLVED'] ?? 0),
+                rejectedCases: statusBreakdown['REJECTED'] ?? 0,
+                totalEvidence,
+                totalInvestigators,
+                totalNGOs,
+                totalUsers,
+                casesByStatus: (caseData.statusBreakdown || []).map((i) => ({ status: i._id, count: i.count })),
+                casesByPriority: (caseData.priorityBreakdown || []).map((i) => ({ priority: i._id, count: i.count })),
+            };
+        }
+        case 'CASE_ANALYTICS': {
+            const scopedFilters = buildScopedFilters(filters, userId, role);
+            const [byStatus, byPriority, byCategory] = await Promise.all([
+                Case.aggregate(agg.getCasesByStatusPipeline(scopedFilters)),
+                Case.aggregate(agg.getCasesByPriorityPipeline(scopedFilters)),
+                Case.aggregate(agg.getCasesByCategoryPipeline(scopedFilters)),
+            ]);
+            return { byStatus, byPriority, byCategory };
+        }
+        case 'EVIDENCE': {
+            const [distribution, verificationRatio] = await Promise.all([
+                Evidence.aggregate(agg.getEvidenceDistributionPipeline()),
+                Evidence.aggregate(agg.getEvidenceVerificationRatioPipeline()),
+            ]);
+            return {
+                distribution,
+                verificationRatio: verificationRatio[0] ?? { total: 0, verified: 0, unverified: 0, verificationRate: 0 },
+            };
+        }
+        case 'CUSTOM': {
+            const scopedFilters = buildScopedFilters(filters, userId, role);
+            const [byStatus, byPriority] = await Promise.all([
+                Case.aggregate(agg.getCasesByStatusPipeline(scopedFilters)),
+                Case.aggregate(agg.getCasesByPriorityPipeline(scopedFilters)),
+            ]);
+            return { byStatus, byPriority };
+        }
+        default:
+            return null;
+    }
+};
+
 export const createReport = async (reportData, userId, role) => {
     if (role !== 'ADMIN') {
         const error = new Error('Access forbidden. Only administrators can create saved reports.');
@@ -247,7 +327,13 @@ export const createReport = async (reportData, userId, role) => {
         throw error;
     }
 
-    const data = { ...reportData, createdBy: userId };
+    const snapshot = await generateReportData(reportData.reportType, reportData.filters || {}, userId, role);
+    const data = {
+        ...reportData,
+        createdBy: userId,
+        reportData: snapshot,
+        generatedAt: new Date(),
+    };
     return await reportRepository.create(data);
 };
 
