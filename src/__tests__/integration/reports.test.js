@@ -23,7 +23,7 @@ describe('Report Routes - Integration', () => {
     });
 
     describe('GET /api/v1/reports/dashboard/summary', () => {
-        it('should return 200 for ADMIN', async () => {
+        it('should return 200 for ADMIN with new summary fields', async () => {
             const res = await request(app)
                 .get('/api/v1/reports/dashboard/summary')
                 .set(authHeader(admin._id, 'ADMIN', admin.email));
@@ -31,6 +31,9 @@ describe('Report Routes - Integration', () => {
             expect(res.status).toBe(200);
             expect(res.body.data).toHaveProperty('totalCases');
             expect(res.body.data).toHaveProperty('totalEvidence');
+            expect(res.body.data).toHaveProperty('totalUsers');
+            expect(Array.isArray(res.body.data.casesByStatus)).toBe(true);
+            expect(Array.isArray(res.body.data.casesByPriority)).toBe(true);
         });
 
         it('should return 403 for NGO', async () => {
@@ -161,7 +164,7 @@ describe('Report Routes - Integration', () => {
     });
 
     describe('POST /api/v1/reports', () => {
-        it('should return 201 for ADMIN creating a report', async () => {
+        it('should return 201 for ADMIN creating a report with reportData snapshot', async () => {
             const res = await request(app)
                 .post('/api/v1/reports')
                 .set(authHeader(admin._id, 'ADMIN', admin.email))
@@ -169,6 +172,8 @@ describe('Report Routes - Integration', () => {
 
             expect(res.status).toBe(201);
             expect(res.body.data.report.name).toBe(REPORT_PAYLOAD.name);
+            expect(res.body.data.report).toHaveProperty('reportData');
+            expect(res.body.data.report).toHaveProperty('generatedAt');
         });
 
         it('should return 403 for NGO', async () => {

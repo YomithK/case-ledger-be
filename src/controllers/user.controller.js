@@ -4,15 +4,28 @@ import { sendSuccess, sendError } from '../utils/response.js';
 
 /**
  * @route   GET /api/v1/users
- * @desc    Get all users
+ * @desc    Get all users (active + inactive) with optional filters and pagination
  * @access  Admin only
  */
 export const getAllUsers = asyncHandler(async (req, res) => {
-    // Admin gets full access to sensitive fields (unmasked NIC and DOB)
     const isAdmin = req.user.role === 'ADMIN';
-    const users = await userService.getAllUsers(isAdmin);
+    const { status, type, search, page, limit } = req.query;
 
-    sendSuccess(res, 200, 'Users retrieved successfully', { count: users.length, users });
+    // Map query params to service filter shape
+    let isActive;
+    if (status === 'active') isActive = true;
+    else if (status === 'inactive') isActive = false;
+
+    const filters = { isActive, role: type, search };
+    const pagination = { page, limit };
+
+    const { users, pagination: paginationMeta } = await userService.getAllUsers(isAdmin, filters, pagination);
+
+    sendSuccess(res, 200, 'Users retrieved successfully', {
+        count: users.length,
+        users,
+        pagination: paginationMeta,
+    });
 });
 
 /**

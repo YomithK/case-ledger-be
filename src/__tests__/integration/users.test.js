@@ -17,13 +17,62 @@ describe('User Routes - Integration', () => {
     });
 
     describe('GET /api/v1/users', () => {
-        it('should return 200 with user list for ADMIN', async () => {
+        it('should return 200 with user list and pagination for ADMIN', async () => {
             const res = await request(app)
                 .get('/api/v1/users')
                 .set(authHeader(admin._id, 'ADMIN', admin.email));
 
             expect(res.status).toBe(200);
             expect(res.body.success).toBe(true);
+            expect(Array.isArray(res.body.data.users)).toBe(true);
+            expect(res.body.data).toHaveProperty('pagination');
+            expect(res.body.data.pagination).toHaveProperty('currentPage');
+            expect(res.body.data.pagination).toHaveProperty('totalCount');
+        });
+
+        it('should include inactive users when no status filter applied', async () => {
+            // Soft-delete the NGO user so they become inactive
+            await request(app)
+                .delete(`/api/v1/users/${ngoUser._id}`)
+                .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+            const res = await request(app)
+                .get('/api/v1/users')
+                .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+            expect(res.status).toBe(200);
+            const ids = res.body.data.users.map((u) => u._id.toString());
+            expect(ids).toContain(ngoUser._id.toString());
+        });
+
+        it('should filter by type=INVESTIGATOR', async () => {
+            const res = await request(app)
+                .get('/api/v1/users?type=INVESTIGATOR')
+                .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+            expect(res.status).toBe(200);
+            res.body.data.users.forEach((u) => {
+                expect(u.role).toBe('INVESTIGATOR');
+            });
+        });
+
+        it('should filter by status=active', async () => {
+            const res = await request(app)
+                .get('/api/v1/users?status=active')
+                .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+            expect(res.status).toBe(200);
+            res.body.data.users.forEach((u) => {
+                expect(u.isActive).toBe(true);
+            });
+        });
+
+        it('should filter by search name', async () => {
+            const res = await request(app)
+                .get('/api/v1/users?search=Test%20Admin')
+                .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+            expect(res.status).toBe(200);
             expect(Array.isArray(res.body.data.users)).toBe(true);
         });
 

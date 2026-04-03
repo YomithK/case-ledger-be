@@ -50,6 +50,7 @@ describe('caseProgress service', () => {
             const created = { _id: entryId, caseId, statusSnapshot: 'UNDER_INVESTIGATION' };
             caseProgressRepository.create.mockResolvedValue(created);
             caseProgressRepository.findById.mockResolvedValue(created);
+            caseRepository.updateStatus.mockResolvedValue({ ...mockActiveCase, status: 'UNDER_INVESTIGATION' });
 
             await caseProgressService.createProgressEntry({
                 caseId, message: 'Progress', updatedBy: investigatorId,
@@ -57,6 +58,20 @@ describe('caseProgress service', () => {
 
             const createArgs = caseProgressRepository.create.mock.calls[0][0];
             expect(createArgs.statusSnapshot).toBe('UNDER_INVESTIGATION');
+        });
+
+        it('should update the case status to the progress snapshot after creation', async () => {
+            caseRepository.findById.mockResolvedValue(mockActiveCase);
+            const created = { _id: entryId, caseId, statusSnapshot: 'EVIDENCE_COLLECTED' };
+            caseProgressRepository.create.mockResolvedValue(created);
+            caseProgressRepository.findById.mockResolvedValue(created);
+            caseRepository.updateStatus.mockResolvedValue({ ...mockActiveCase, status: 'EVIDENCE_COLLECTED' });
+
+            await caseProgressService.createProgressEntry({
+                caseId, message: 'Evidence gathered', statusSnapshot: 'EVIDENCE_COLLECTED', updatedBy: investigatorId,
+            });
+
+            expect(caseRepository.updateStatus).toHaveBeenCalledWith(caseId, 'EVIDENCE_COLLECTED');
         });
     });
 

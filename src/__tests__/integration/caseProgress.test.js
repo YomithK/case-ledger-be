@@ -35,6 +35,22 @@ describe('Case Progress Routes - Integration', () => {
             expect(res.body.success).toBe(true);
         });
 
+        it('should update case status to match the progress statusSnapshot', async () => {
+            const progressRes = await request(app)
+                .post(`/api/v1/cases/${caseDoc._id}/progress`)
+                .set(authHeader(investigator._id, 'INVESTIGATOR', investigator.email))
+                .send({ message: 'Evidence gathered', statusSnapshot: 'EVIDENCE_COLLECTED' });
+
+            expect(progressRes.status).toBe(201);
+
+            const caseRes = await request(app)
+                .get(`/api/v1/cases/${caseDoc._id}`)
+                .set(authHeader(admin._id, 'ADMIN', admin.email));
+
+            expect(caseRes.status).toBe(200);
+            expect(caseRes.body.data.case.status).toBe('EVIDENCE_COLLECTED');
+        });
+
         it('should return 403 for ADMIN adding progress (INVESTIGATOR-only route)', async () => {
             const res = await request(app)
                 .post(`/api/v1/cases/${caseDoc._id}/progress`)

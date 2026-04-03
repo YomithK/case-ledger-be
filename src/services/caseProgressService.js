@@ -48,7 +48,10 @@ export const createProgressEntry = async ({ caseId, statusSnapshot, message, fil
     // 3. Create Entry
     const newEntry = await caseProgressRepository.create(progressData);
 
-    // 4. Return populated entry
+    // 4. Sync case status to the progress snapshot
+    await caseRepository.updateStatus(caseId, progressData.statusSnapshot);
+
+    // 5. Return populated entry
     return await caseProgressRepository.findById(newEntry._id);
 };
 
