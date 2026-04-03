@@ -31,10 +31,14 @@ const userSchema = new mongoose.Schema(
         role: {
             type: String,
             enum: {
-                values: ['ADMIN', 'INVESTIGATOR', 'NGO'],
+                values: ['ADMIN', 'INVESTIGATOR', 'NGO', 'VICTIM'],
                 message: '{VALUE} is not a valid role',
             },
             default: 'NGO',
+        },
+        profilePhoto: {
+            type: String,
+            trim: true,
         },
         phoneNumber: {
             type: String,

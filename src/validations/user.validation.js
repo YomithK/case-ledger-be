@@ -3,7 +3,7 @@ import { celebrate, Joi, Segments } from 'celebrate';
 export const getUsersValidation = celebrate({
     [Segments.QUERY]: Joi.object({
         status: Joi.string().valid('active', 'inactive').optional(),
-        type: Joi.string().valid('ADMIN', 'INVESTIGATOR', 'NGO').optional(),
+        type: Joi.string().valid('ADMIN', 'INVESTIGATOR', 'NGO', 'VICTIM').optional(),
         search: Joi.string().trim().optional(),
         page: Joi.number().integer().min(1).optional(),
         limit: Joi.number().integer().min(1).max(100).optional(),
@@ -39,8 +39,8 @@ export const updateRoleValidation = celebrate({
         }),
     }),
     [Segments.BODY]: Joi.object({
-        role: Joi.string().valid('ADMIN', 'INVESTIGATOR', 'NGO').required().messages({
-            'any.only': 'Role must be one of: ADMIN, INVESTIGATOR, NGO',
+        role: Joi.string().valid('ADMIN', 'INVESTIGATOR', 'NGO', 'VICTIM').required().messages({
+            'any.only': 'Role must be one of: ADMIN, INVESTIGATOR, NGO, VICTIM',
             'any.required': 'Role is required',
         }),
     }),
