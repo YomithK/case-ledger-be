@@ -42,9 +42,9 @@ export const findByNIC = async (nic) => {
 export const findById = async (userId, options = {}) => {
     const filter = { _id: userId };
 
-    if (options.activeOnly !== false) {
-        filter.isActive = true;
-    }
+    // if (options.activeOnly !== false) {
+    //     filter.isActive = true;
+    // }
 
     let query = User.findOne(filter);
 

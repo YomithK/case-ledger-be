@@ -54,7 +54,7 @@ export const getUserById = async (userId, isAdmin = false) => {
     // Find user by ID
     const user = await userRepository.findById(userId, {
         includeSensitive: isAdmin,
-        activeOnly: true,
+        // activeOnly: true,
     });
 
     // Validate user exists
