@@ -216,3 +216,71 @@ export const caseExists = async (caseId) => {
     const caseDoc = await Case.findOne({ _id: caseId, isArchived: false });
     return !!caseDoc;
 };
+
+/**
+ * Find all public cases (confidentialLevel = PUBLIC, not archived)
+ * @param {Object} pagination - Pagination options
+ * @returns {Promise<Array>} Array of public case documents
+ */
+export const findPublicCases = async (pagination = {}) => {
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    return await Case.find({ confidentialLevel: 'PUBLIC', isArchived: false })
+        .populate('reportedBy', 'name organizationName')
+        .sort('-createdAt')
+        .skip(skip)
+        .limit(limit);
+};
+
+/**
+ * Count public cases
+ * @returns {Promise<number>} Count of public cases
+ */
+export const countPublicCases = async () => {
+    return await Case.countDocuments({ confidentialLevel: 'PUBLIC', isArchived: false });
+};
+
+/**
+ * Find cases associated with a user (as reporter, investigator, or victim)
+ * @param {string} userId - User ID
+ * @param {Object} pagination - Pagination options
+ * @returns {Promise<Array>} Array of associated case documents
+ */
+export const findAssociatedCases = async (userId, pagination = {}) => {
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    return await Case.find({
+        $or: [
+            { reportedBy: userId },
+            { assignedInvestigator: userId },
+            { victim: userId },
+        ],
+        isArchived: false,
+    })
+        .populate('reportedBy', 'name email role organizationName')
+        .populate('assignedInvestigator', 'name email nic')
+        .populate('victim', 'name email')
+        .sort('-createdAt')
+        .skip(skip)
+        .limit(limit);
+};
+
+/**
+ * Count cases associated with a user
+ * @param {string} userId - User ID
+ * @returns {Promise<number>} Count of associated cases
+ */
+export const countAssociatedCases = async (userId) => {
+    return await Case.countDocuments({
+        $or: [
+            { reportedBy: userId },
+            { assignedInvestigator: userId },
+            { victim: userId },
+        ],
+        isArchived: false,
+    });
+};

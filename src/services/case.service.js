@@ -77,6 +77,9 @@ export const getCases = async (filters = {}, pagination = {}, userId, userRole) 
     } else if (userRole === 'INVESTIGATOR') {
         // INVESTIGATOR can only see assigned cases
         appliedFilters.assignedInvestigator = userId;
+    } else if (userRole === 'VICTIM') {
+        // VICTIM can only see cases where they are the assigned victim
+        appliedFilters.victim = userId;
     }
     // ADMIN can see all cases (no additional filter)
 
@@ -141,6 +144,13 @@ export const getCaseById = async (caseId, userId, userRole) => {
             caseDoc.assignedInvestigator._id.toString() !== userId.toString()
         ) {
             const error = new Error('Access forbidden. You can only view cases assigned to you.');
+            error.statusCode = 403;
+            throw error;
+        }
+    } else if (userRole === 'VICTIM') {
+        // VICTIM can only see cases where they are assigned as victim
+        if (!caseDoc.victim || caseDoc.victim._id.toString() !== userId.toString()) {
+            const error = new Error('Access forbidden. You can only view cases related to you.');
             error.statusCode = 403;
             throw error;
         }
@@ -377,4 +387,112 @@ export const deleteCase = async (caseId, userRole) => {
     }
 
     return { message: 'Case deleted successfully' };
+};
+
+/**
+ * Assign victim to case
+ * @param {string} caseId - Case ID
+ * @param {string} victimId - Victim user ID (optional)
+ * @param {string} inviteEmail - Email to invite if victim not in system (optional)
+ * @param {string} userId - Requesting user ID
+ * @param {string} userRole - Requesting user role
+ * @returns {Promise<Object>} Updated case
+ */
+export const assignVictim = async (caseId, victimId, inviteEmail, userId, userRole) => {
+    const caseDoc = await caseRepository.findById(caseId, { activeOnly: true });
+
+    if (!caseDoc) {
+        const error = new Error('Case not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    // INVESTIGATOR must be assigned to the case
+    if (userRole === 'INVESTIGATOR') {
+        if (!caseDoc.assignedInvestigator || caseDoc.assignedInvestigator.toString() !== userId.toString()) {
+            const error = new Error('Access forbidden. You can only assign victims to cases assigned to you.');
+            error.statusCode = 403;
+            throw error;
+        }
+    }
+
+    if (victimId) {
+        const victim = await userRepository.findById(victimId, { activeOnly: true });
+        if (!victim) {
+            const error = new Error('Victim user not found');
+            error.statusCode = 404;
+            throw error;
+        }
+        if (victim.role !== 'VICTIM') {
+            const error = new Error('User must have VICTIM role to be assigned as case victim');
+            error.statusCode = 400;
+            throw error;
+        }
+    }
+
+    const updatedCase = await caseRepository.updateById(caseId, { victim: victimId || null });
+    if (!updatedCase) {
+        const error = new Error('Failed to assign victim');
+        error.statusCode = 500;
+        throw error;
+    }
+
+    return updatedCase;
+};
+
+/**
+ * Get all public cases (no auth required)
+ * @param {Object} pagination - Pagination options
+ * @returns {Promise<Object>} Cases with pagination metadata
+ */
+export const getPublicCases = async (pagination = {}) => {
+    const [cases, totalCount] = await Promise.all([
+        caseRepository.findPublicCases(pagination),
+        caseRepository.countPublicCases(),
+    ]);
+
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return {
+        cases,
+        pagination: {
+            currentPage: page,
+            totalPages,
+            totalCount,
+            limit,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
+        },
+    };
+};
+
+/**
+ * Get cases associated with the authenticated user
+ * @param {string} userId - User ID
+ * @param {Object} pagination - Pagination options
+ * @returns {Promise<Object>} Cases with pagination metadata
+ */
+export const getAssociatedCases = async (userId, pagination = {}) => {
+    const [cases, totalCount] = await Promise.all([
+        caseRepository.findAssociatedCases(userId, pagination),
+        caseRepository.countAssociatedCases(userId),
+    ]);
+
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return {
+        cases,
+        pagination: {
+            currentPage: page,
+            totalPages,
+            totalCount,
+            limit,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
+        },
+    };
 };
