@@ -1,5 +1,7 @@
 import * as caseProgressRepository from '../repository/caseProgress.repository.js';
 import * as caseRepository from '../repository/case.repository.js';
+import * as userRepository from '../repository/user.repository.js';
+import { sendVictimProgressUpdateEmail } from './email.service.js';
 
 /**
  * Create a new progress entry for a case
@@ -51,7 +53,23 @@ export const createProgressEntry = async ({ caseId, statusSnapshot, message, fil
     // 4. Sync case status to the progress snapshot
     await caseRepository.updateStatus(caseId, progressData.statusSnapshot);
 
-    // 5. Return populated entry
+    // 5. Notify victim if assigned
+    if (caseDoc.victim) {
+        const victim = await userRepository.findById(caseDoc.victim);
+        if (victim) {
+            sendVictimProgressUpdateEmail({
+                victimEmail: victim.email,
+                victimName: victim.name,
+                caseTitle: caseDoc.title,
+                caseNumber: caseDoc.caseNumber,
+                caseId: caseDoc._id.toString(),
+                progressMessage: message,
+                newStatus: progressData.statusSnapshot,
+            }).catch(() => {});
+        }
+    }
+
+    // 6. Return populated entry
     return await caseProgressRepository.findById(newEntry._id);
 };
 
