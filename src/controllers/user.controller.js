@@ -97,3 +97,24 @@ export const deleteUser = asyncHandler(async (req, res) => {
 
     sendSuccess(res, 200, result.message, null);
 });
+
+/**
+ * @route   POST /api/v1/users/:id/profile-photo
+ * @desc    Upload or update profile photo
+ * @access  Admin or self
+ */
+export const uploadProfilePhoto = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    if (req.user.role !== 'ADMIN' && req.user.userId.toString() !== id) {
+        return sendError(res, 403, 'Access forbidden. You can only update your own profile photo.');
+    }
+
+    if (!req.file || !req.file.path) {
+        return sendError(res, 400, 'No image file uploaded.');
+    }
+
+    const user = await userService.updateUser(id, { profilePhoto: req.file.path });
+
+    sendSuccess(res, 200, 'Profile photo updated successfully', { user });
+});
