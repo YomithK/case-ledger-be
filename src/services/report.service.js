@@ -404,6 +404,86 @@ export const updateReport = async (reportId, updateData, userId, role) => {
     return updated;
 };
 
+// ─────────────────────────────────────────────────────────────
+// 7. CSV DOWNLOAD
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Build a filter object for the Case model based on query params.
+ */
+const buildCaseFilter = (rawFilters = {}, userId, role) => {
+    const match = { isArchived: false };
+
+    if (role === 'NGO') match.reportedBy = new mongoose.Types.ObjectId(userId);
+    if (role === 'INVESTIGATOR') match.assignedInvestigator = new mongoose.Types.ObjectId(userId);
+
+    if (rawFilters.status) {
+        const statuses = Array.isArray(rawFilters.status) ? rawFilters.status : rawFilters.status.split(',');
+        match.status = { $in: statuses };
+    }
+    if (rawFilters.priority) {
+        const priorities = Array.isArray(rawFilters.priority) ? rawFilters.priority : rawFilters.priority.split(',');
+        match.priority = { $in: priorities };
+    }
+    if (rawFilters.category) {
+        const categories = Array.isArray(rawFilters.category) ? rawFilters.category : rawFilters.category.split(',');
+        match.category = { $in: categories };
+    }
+    if (rawFilters.startDate || rawFilters.endDate) {
+        match.createdAt = {};
+        if (rawFilters.startDate) match.createdAt.$gte = new Date(rawFilters.startDate);
+        if (rawFilters.endDate) match.createdAt.$lte = new Date(rawFilters.endDate);
+    }
+
+    return match;
+};
+
+const escapeCsvField = (val) => {
+    if (val === null || val === undefined) return '';
+    const str = String(val).replace(/"/g, '""');
+    return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
+};
+
+export const downloadCasesCsv = async (rawFilters, userId, role) => {
+    if (role !== 'ADMIN' && role !== 'NGO') {
+        const error = new Error('Access forbidden. Only administrators and NGO users can download reports.');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const filter = buildCaseFilter(rawFilters, userId, role);
+
+    const cases = await Case.find(filter)
+        .populate('reportedBy', 'name email')
+        .populate('assignedInvestigator', 'name email')
+        .sort({ createdAt: -1 })
+        .limit(5000)
+        .lean();
+
+    const headers = [
+        'Case Number', 'Title', 'Status', 'Priority', 'Category',
+        'Location', 'Incident Date', 'Reported By', 'Assigned Investigator',
+        'Confidential Level', 'Created At',
+    ];
+
+    const rows = cases.map((c) => [
+        c.caseNumber,
+        c.title,
+        c.status,
+        c.priority,
+        c.category,
+        c.location || '',
+        c.incidentDate ? new Date(c.incidentDate).toISOString().split('T')[0] : '',
+        c.reportedBy?.name || '',
+        c.assignedInvestigator?.name || '',
+        c.confidentialLevel,
+        new Date(c.createdAt).toISOString().split('T')[0],
+    ]);
+
+    const csvLines = [headers, ...rows].map((row) => row.map(escapeCsvField).join(','));
+    return csvLines.join('\n');
+};
+
 export const deleteReport = async (reportId, userId, role) => {
     if (role !== 'ADMIN') {
         const error = new Error('Access forbidden. Only administrators can delete saved reports.');
