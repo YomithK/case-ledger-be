@@ -8,12 +8,27 @@ import {
     updateStatusValidation,
     getCasesValidation,
     caseIdValidation,
+    assignVictimValidation,
 } from '../validations/case.validation.js';
 
 const router = express.Router();
 
-// All routes require authentication
+/**
+ * @route   GET /cases/public
+ * @desc    Get all public, non-archived cases
+ * @access  Public (no authentication required)
+ */
+router.get('/public', caseController.getPublicCases);
+
+// All routes below require authentication
 router.use(authenticate);
+
+/**
+ * @route   GET /cases/associated
+ * @desc    Get cases associated with the authenticated user
+ * @access  Authenticated
+ */
+router.get('/associated', caseController.getAssociatedCases);
 
 /**
  * @route   POST /cases
@@ -61,6 +76,18 @@ router.put(
  * @access  ADMIN or assigned INVESTIGATOR (validated in service)
  */
 router.put('/:id/status', updateStatusValidation, caseController.updateStatus);
+
+/**
+ * @route   PUT /cases/:id/assign-victim
+ * @desc    Assign victim to case
+ * @access  INVESTIGATOR (assigned) or ADMIN
+ */
+router.put(
+    '/:id/assign-victim',
+    authorize('ADMIN', 'INVESTIGATOR'),
+    assignVictimValidation,
+    caseController.assignVictim
+);
 
 /**
  * @route   DELETE /cases/:id

@@ -20,8 +20,8 @@ export const registerValidation = celebrate({
             'string.empty': 'Password is required',
             'any.required': 'Password is required',
         }),
-        role: Joi.string().valid('ADMIN', 'INVESTIGATOR', 'NGO').optional().messages({
-            'any.only': 'Role must be one of: ADMIN, INVESTIGATOR, NGO',
+        role: Joi.string().valid('ADMIN', 'INVESTIGATOR', 'NGO', 'VICTIM').optional().messages({
+            'any.only': 'Role must be one of: ADMIN, INVESTIGATOR, NGO, VICTIM',
         }),
         phoneNumber: Joi.string().pattern(/^[0-9]{10}$/).optional().messages({
             'string.pattern.base': 'Phone number must be a valid 10-digit number',
