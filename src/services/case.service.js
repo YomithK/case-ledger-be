@@ -1,6 +1,6 @@
 import * as caseRepository from '../repository/case.repository.js';
 import * as userRepository from '../repository/user.repository.js';
-import { sendInvestigatorAssignmentEmail, sendVictimInvitationEmail } from './email.service.js';
+import { sendInvestigatorAssignmentEmail, sendVictimAssignmentEmail, sendVictimInvitationEmail } from './email.service.js';
 
 /**
  * Status transition rules
@@ -426,8 +426,9 @@ export const assignVictim = async (caseId, victimId, inviteEmail, userId, userRo
         }
     }
 
+    let victim = null;
     if (victimId) {
-        const victim = await userRepository.findById(victimId, { activeOnly: true });
+        victim = await userRepository.findById(victimId, { activeOnly: true });
         if (!victim) {
             const error = new Error('Victim user not found');
             error.statusCode = 404;
@@ -445,6 +446,24 @@ export const assignVictim = async (caseId, victimId, inviteEmail, userId, userRo
         const error = new Error('Failed to assign victim');
         error.statusCode = 500;
         throw error;
+    }
+
+    if (victim) {
+        sendVictimAssignmentEmail({
+            victimEmail: victim.email,
+            victimName: victim.name,
+            caseTitle: caseDoc.title,
+            caseNumber: caseDoc.caseNumber,
+            caseId: caseDoc._id,
+        });
+    } else if (inviteEmail) {
+        const reporter = await userRepository.findById(userId, { activeOnly: true });
+        sendVictimInvitationEmail({
+            email: inviteEmail,
+            caseTitle: caseDoc.title,
+            caseNumber: caseDoc.caseNumber,
+            inviterName: reporter?.name || 'The investigation team',
+        });
     }
 
     return updatedCase;

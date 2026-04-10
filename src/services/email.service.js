@@ -183,6 +183,44 @@ export const sendVictimProgressUpdateEmail = async ({ victimEmail, victimName, c
 };
 
 /**
+ * Send notification to victim when they are assigned to a case
+ */
+export const sendVictimAssignmentEmail = async ({ victimEmail, victimName, caseTitle, caseNumber, caseId }) => {
+    const html = buildEmailTemplate({
+        title: 'Case Assignment Notification',
+        bodyHtml: `
+          <h2 style="margin:0 0 16px;font-size:22px;font-weight:700;">You have been assigned to a case</h2>
+          <p style="margin:0 0 24px;color:#444;line-height:1.6;">
+            Hi <strong>${victimName}</strong>, you have been associated with the following case on the Case Ledger platform.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;border-radius:6px;padding:20px;margin-bottom:24px;">
+            <tr>
+              <td>
+                <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Case Number</p>
+                <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#0f0f0f;">${caseNumber}</p>
+                <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Case Title</p>
+                <p style="margin:0;font-size:15px;color:#1a1a1a;">${caseTitle}</p>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:0 0 24px;color:#444;line-height:1.6;">
+            Please log in to the platform to view case details and any updates from the investigation team.
+          </p>
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/cases/${caseId}"
+             style="display:inline-block;background:#0f0f0f;color:#ffffff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">
+            View Case
+          </a>
+        `,
+    });
+
+    await sendMail({
+        to: victimEmail,
+        subject: `[Case Ledger] Case Assignment: ${caseNumber}`,
+        html,
+    });
+};
+
+/**
  * Send invitation email to a potential victim not yet registered in the system
  */
 export const sendVictimInvitationEmail = async ({ email, caseTitle, caseNumber, inviterName }) => {
