@@ -177,6 +177,24 @@ export const getEvidenceVerificationRatio = asyncHandler(async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 
 /**
+ * @route   GET /api/v1/reports/cases/download
+ * @desc    Download filtered cases as a CSV file
+ * @access  ADMIN, NGO (own cases)
+ */
+export const downloadCasesCsv = asyncHandler(async (req, res) => {
+    const { userId, role } = req.user;
+    const { status, priority, category, startDate, endDate } = req.query;
+    const filters = { status, priority, category, startDate, endDate };
+
+    const csv = await reportService.downloadCasesCsv(filters, userId, role);
+
+    const filename = `cases-report-${new Date().toISOString().split('T')[0]}.csv`;
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(csv);
+});
+
+/**
  * @route   POST /api/v1/reports
  * @desc    Create a saved report configuration
  * @access  ADMIN only
