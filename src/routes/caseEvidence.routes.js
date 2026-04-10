@@ -21,7 +21,7 @@ router.post(
 router.get(
     '/',
     authenticate,
-    authorize('ADMIN', 'INVESTIGATOR', 'NGO'),
+    authorize('ADMIN', 'INVESTIGATOR', 'NGO', 'VICTIM'),
     getEvidenceByCase
 );
 

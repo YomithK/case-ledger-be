@@ -29,7 +29,8 @@ export const findById = async (caseId, options = {}) => {
     if (options.populate) {
         query = query
             .populate('reportedBy', 'name email role organizationName')
-            .populate('assignedInvestigator', 'name email nic');
+            .populate('assignedInvestigator', 'name email nic')
+            .populate('victim', 'name email');
     }
 
     return await query;
@@ -156,7 +157,8 @@ export const updateById = async (caseId, updateData, options = {}) => {
         runValidators: true,
     })
         .populate('reportedBy', 'name email role organizationName')
-        .populate('assignedInvestigator', 'name email nic');
+        .populate('assignedInvestigator', 'name email nic')
+        .populate('victim', 'name email');
 };
 
 /**
@@ -188,7 +190,8 @@ export const assignInvestigator = async (caseId, investigatorId) => {
         { new: true, runValidators: true }
     )
         .populate('reportedBy', 'name email role organizationName')
-        .populate('assignedInvestigator', 'name email nic');
+        .populate('assignedInvestigator', 'name email nic')
+        .populate('victim', 'name email');
 };
 
 /**
@@ -204,7 +207,8 @@ export const updateStatus = async (caseId, newStatus) => {
         { new: true, runValidators: true }
     )
         .populate('reportedBy', 'name email role organizationName')
-        .populate('assignedInvestigator', 'name email nic');
+        .populate('assignedInvestigator', 'name email nic')
+        .populate('victim', 'name email');
 };
 
 /**

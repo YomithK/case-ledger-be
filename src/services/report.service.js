@@ -484,6 +484,67 @@ export const downloadCasesCsv = async (rawFilters, userId, role) => {
     return csvLines.join('\n');
 };
 
+/**
+ * Download a saved report as CSV using its stored reportData snapshot.
+ * Flattens whatever array entries exist in reportData into rows.
+ */
+export const downloadSavedReportCsv = async (reportId, userId, role) => {
+    if (role !== 'ADMIN') {
+        const error = new Error('Access forbidden. Only administrators can download saved reports.');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    assertValidObjectId(reportId, 'report ID');
+
+    const report = await reportRepository.findById(reportId);
+    if (!report) {
+        const error = new Error('Report not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const data = report.reportData;
+    let rows = [];
+    let headers = [];
+
+    // Flatten data arrays from the snapshot into flat rows
+    const buildRows = (arr, keyMap) => arr.map((item) => keyMap.map((k) => item[k] ?? ''));
+
+    if (report.reportType === 'DASHBOARD') {
+        headers = ['Metric', 'Value'];
+        rows = Object.entries(data || {})
+            .filter(([, v]) => !Array.isArray(v))
+            .map(([k, v]) => [k, v]);
+    } else if (data?.byStatus || data?.casesByStatus) {
+        const byStatus = data.byStatus || data.casesByStatus || [];
+        const byPriority = data.byPriority || data.casesByPriority || [];
+        const byCategory = data.byCategory || [];
+        headers = ['Breakdown', 'Key', 'Count'];
+        byStatus.forEach((r) => rows.push(['Status', r.status || r._id, r.count]));
+        byPriority.forEach((r) => rows.push(['Priority', r.priority || r._id, r.count]));
+        byCategory.forEach((r) => rows.push(['Category', r.category || r._id, r.count]));
+    } else if (data?.distribution) {
+        headers = ['File Category', 'Count', 'Total Size (bytes)'];
+        rows = (data.distribution || []).map((r) => [r._id || r.fileCategory, r.count, r.totalSize ?? '']);
+    } else if (data?.investigator) {
+        headers = ['Metric', 'Value'];
+        rows = [
+            ['Investigator', data.investigator?.name || ''],
+            ['Total Assigned', data.totalAssigned ?? ''],
+            ['Active Cases', data.activeCases ?? ''],
+            ['Closed Cases', data.closedCases ?? ''],
+            ['Avg Resolution Days', data.avgResolutionTimeDays ?? ''],
+        ];
+    } else {
+        headers = ['Key', 'Value'];
+        rows = Object.entries(data || {}).map(([k, v]) => [k, JSON.stringify(v)]);
+    }
+
+    const csvLines = [headers, ...rows].map((row) => row.map(escapeCsvField).join(','));
+    return { csv: csvLines.join('\n'), name: report.name };
+};
+
 export const deleteReport = async (reportId, userId, role) => {
     if (role !== 'ADMIN') {
         const error = new Error('Access forbidden. Only administrators can delete saved reports.');

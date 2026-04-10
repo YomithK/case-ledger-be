@@ -240,6 +240,23 @@ export const getReportById = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @route   GET /api/v1/reports/:id/download
+ * @desc    Download a saved report as CSV
+ * @access  ADMIN only
+ */
+export const downloadSavedReportCsv = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { userId, role } = req.user;
+
+    const { csv, name } = await reportService.downloadSavedReportCsv(id, userId, role);
+
+    const filename = `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.csv`;
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(csv);
+});
+
+/**
  * @route   PUT /api/v1/reports/:id
  * @desc    Update a saved report configuration
  * @access  ADMIN only

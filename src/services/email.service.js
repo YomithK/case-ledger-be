@@ -67,21 +67,43 @@ const buildEmailTemplate = ({ title, preheader, bodyHtml }) => `
 
 const sendMail = async ({ to, subject, html }) => {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        logger.warn('Email credentials not configured. Skipping email send.');
+        logger.warn('[Email] Credentials not configured (EMAIL_USER/EMAIL_PASS missing). Skipping send.', {
+            to,
+            subject,
+        });
         return;
     }
 
+    logger.info('[Email] Attempting to send email', {
+        to,
+        subject,
+        from: process.env.EMAIL_USER,
+        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+        port: process.env.EMAIL_PORT || 587,
+    });
+
     try {
         const transporter = createTransporter();
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
             from: `"Case Ledger" <${process.env.EMAIL_USER}>`,
             to,
             subject,
             html,
         });
-        logger.info(`Email sent to ${to}: ${subject}`);
+        logger.info('[Email] Email sent successfully', {
+            to,
+            subject,
+            messageId: info.messageId,
+            response: info.response,
+        });
     } catch (error) {
-        logger.error(`Failed to send email to ${to}: ${error.message}`);
+        logger.error('[Email] Failed to send email', {
+            to,
+            subject,
+            error: error.message,
+            stack: error.stack,
+            code: error.code,
+        });
     }
 };
 

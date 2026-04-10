@@ -212,6 +212,18 @@ router.get(
 );
 
 /**
+ * @route   GET /reports/:id/download
+ * @desc    Download a saved report as CSV
+ * @access  ADMIN only
+ */
+router.get(
+    '/:id/download',
+    authorize('ADMIN'),
+    reportIdValidation,
+    reportController.downloadSavedReportCsv
+);
+
+/**
  * @route   PUT /reports/:id
  * @desc    Update a saved report configuration
  * @access  ADMIN only
