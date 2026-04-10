@@ -1,5 +1,6 @@
 import * as caseRepository from '../repository/case.repository.js';
 import * as userRepository from '../repository/user.repository.js';
+import { sendInvestigatorAssignmentEmail, sendVictimInvitationEmail } from './email.service.js';
 
 /**
  * Status transition rules
@@ -285,6 +286,15 @@ export const assignInvestigator = async (caseId, investigatorId, userRole) => {
         error.statusCode = 500;
         throw error;
     }
+
+    // Send assignment notification email (non-blocking)
+    sendInvestigatorAssignmentEmail({
+        investigatorEmail: investigator.email,
+        investigatorName: investigator.name,
+        caseTitle: caseDoc.title,
+        caseNumber: caseDoc.caseNumber,
+        caseId: caseDoc._id.toString(),
+    }).catch(() => {});
 
     return updatedCase;
 };
