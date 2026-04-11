@@ -1,6 +1,6 @@
-# Case Ledger — Backend API - v1.0.0
+# Case Ledger — Backend API v1.1.0
 
-> REST API for the Human Rights Case Tracking System, built with Node.js, Express, and MongoDB.
+> REST API for the Human Rights Case Tracking System, built with Node.js, Express 5, and MongoDB.
 
 **Classification: Public-SLIIT**
 
@@ -8,6 +8,7 @@
 
 ## Table of Contents
 
+- [Live URL](#live-url)
 - [Tech Stack](#tech-stack)
 - [Setup Instructions](#setup-instructions)
 - [Environment Variables](#environment-variables)
@@ -21,7 +22,18 @@
   - [Case Progress](#case-progress)
   - [Evidence](#evidence)
   - [Reports & Analytics](#reports--analytics)
+  - [Reference Data](#reference-data)
 - [Error Handling](#error-handling)
+- [Testing](#testing)
+- [Deployment](#deployment)
+
+---
+
+## Live URL
+
+The backend API is hosted on **Railway**.
+
+> **Base URL:** `https://case-ledger-be-production.up.railway.app/api/v1`
 
 ---
 
@@ -36,6 +48,7 @@
 | Validation       | Celebrate / Joi        |
 | File Uploads     | Multer + Cloudinary    |
 | Password Hashing | bcryptjs               |
+| Logging          | Winston                |
 | Dev Server       | Nodemon                |
 | Package Manager  | pnpm                   |
 
@@ -45,7 +58,7 @@
 
 ### Prerequisites
 
-- **Node.js** v18+ ([nodejs.org](https://nodejs.org))
+- **Node.js** v18+
 - **pnpm** v10+ — install with `npm install -g pnpm`
 - **MongoDB Atlas** account (or a local MongoDB instance)
 - **Cloudinary** account (for evidence file uploads)
@@ -65,24 +78,24 @@ pnpm install
 
 ### 3. Configure Environment Variables
 
-Copy the example env file and fill in your values:
+Create a `.env` file in the project root:
 
 ```bash
 cp .env.example .env
 ```
 
-See [Environment Variables](#environment-variables) for the full list of required values.
+Fill in the required values — see [Environment Variables](#environment-variables) for the full list.
 
-### 4. Run the Development Server
+### 4. Start the Development Server
 
 ```bash
 pnpm run dev
 ```
 
-The server starts on **`http://localhost:8080`** by default.
-The API base URL is: **`http://localhost:8080/api/v1`**
+The server starts on `http://localhost:8080` by default.
+API base URL: `http://localhost:8080/api/v1`
 
-### 5. Run in Production
+### 5. Start in Production Mode
 
 ```bash
 pnpm start
@@ -92,25 +105,18 @@ pnpm start
 
 ## Environment Variables
 
-Create a `.env` file in the project root with the following keys:
-
-```env
-# Server
-PORT=8080
-NODE_ENV=development
-
-# MongoDB
-MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/<dbname>
-
-# JWT
-JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRES_IN=7d
-
-# Cloudinary (for evidence file uploads)
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-```
+| Variable                | Required | Description                                       |
+| ----------------------- | -------- | ------------------------------------------------- |
+| `PORT`                  | ✅       | Port the server listens on (default: `8080`)      |
+| `NODE_ENV`              | ✅       | `development`, `test`, or `production`            |
+| `MONGODB_URI`           | ✅       | MongoDB connection string (Atlas or local)        |
+| `DB_MIN_POOL_SIZE`      | ❌       | Mongoose min connection pool size (default: `5`)  |
+| `DB_MAX_POOL_SIZE`      | ❌       | Mongoose max connection pool size (default: `10`) |
+| `JWT_SECRET`            | ✅       | Secret key for signing JWT tokens                 |
+| `JWT_EXPIRES_IN`        | ✅       | Token expiry duration (e.g. `1d`, `7d`)           |
+| `CLOUDINARY_CLOUD_NAME` | ✅       | Cloudinary cloud name                             |
+| `CLOUDINARY_API_KEY`    | ✅       | Cloudinary API key                                |
+| `CLOUDINARY_API_SECRET` | ✅       | Cloudinary API secret                             |
 
 ---
 
@@ -118,16 +124,16 @@ CLOUDINARY_API_SECRET=your_api_secret
 
 ```
 src/
-├── config/          # App and Cloudinary configuration
-├── controllers/     # Route handlers (thin layer, delegates to services)
-├── database/        # MongoDB connection
-├── middleware/       # Auth (JWT verify + role authorize), error, upload
-├── models/          # Mongoose schemas (User, Case, CaseProgress, Evidence, Report)
-├── repository/      # Data access layer (all DB queries live here)
-├── routes/          # Express routers
+├── config/          # App config, Cloudinary config, env loading
+├── controllers/     # Route handlers — thin layer delegating to services
+├── database/        # MongoDB connection logic
+├── middleware/      # JWT auth, role authorisation, error handler, file upload
+├── models/          # Mongoose schemas: User, Case, CaseProgress, Evidence, Report
+├── repository/      # Data access layer — all DB queries live here
+├── routes/          # Express routers mounted under /api/v1
 ├── services/        # Business logic layer
-├── utils/           # NIC validation, password helpers
-└── validations/     # Celebrate/Joi request schemas
+├── utils/           # NIC validator, password helpers, Winston logger
+└── validations/     # Celebrate/Joi request validation schemas
 ```
 
 ---
@@ -140,17 +146,17 @@ All protected endpoints require a **Bearer token** in the `Authorization` header
 Authorization: Bearer <jwt_token>
 ```
 
-Tokens are obtained from the **Login** or **Register** endpoints and expire based on the `JWT_EXPIRES_IN` config value (default: 7 days).
+Tokens are issued by `/auth/login` and `/auth/register` and expire according to `JWT_EXPIRES_IN`.
 
 ---
 
 ## User Roles
 
-| Role           | Description                                                               |
-| -------------- | ------------------------------------------------------------------------- |
-| `ADMIN`        | Full system access — manage users, cases, assignments, reports            |
-| `NGO`          | Can create cases, assign investigators to their own cases, view own cases |
-| `INVESTIGATOR` | Can view & update assigned cases, upload evidence, log progress           |
+| Role           | Description                                                           |
+| -------------- | --------------------------------------------------------------------- |
+| `ADMIN`        | Full system access — manage users, cases, assignments, reports        |
+| `NGO`          | Create cases, assign investigators to own cases, view own cases       |
+| `INVESTIGATOR` | View and update assigned cases, upload evidence, log progress updates |
 
 ---
 
@@ -158,11 +164,21 @@ Tokens are obtained from the **Login** or **Register** endpoints and expire base
 
 **Base URL:** `http://localhost:8080/api/v1`
 
+All responses follow this envelope:
+
+```json
+{
+  "success": true,
+  "message": "Human-readable message",
+  "data": {}
+}
+```
+
 ---
 
 ### Auth
 
-> **Public endpoints — no authentication required.**
+> Public endpoints — no authentication required.
 
 #### `POST /auth/register`
 
@@ -184,10 +200,10 @@ Register a new user account.
 | Field              | Type   | Required                    | Notes                                                  |
 | ------------------ | ------ | --------------------------- | ------------------------------------------------------ |
 | `name`             | string | ✅                          |                                                        |
-| `email`            | string | ✅                          | Must be a valid email                                  |
-| `password`         | string | ✅                          | Min 6 characters                                       |
+| `email`            | string | ✅                          | Must be a valid email, unique                          |
+| `password`         | string | ✅                          | Minimum 6 characters                                   |
 | `role`             | string | ❌                          | `ADMIN`, `INVESTIGATOR`, or `NGO`. Defaults to `NGO`   |
-| `phoneNumber`      | string | ❌                          | 10-digit number                                        |
+| `phoneNumber`      | string | ❌                          | 10-digit Sri Lankan number                             |
 | `organizationName` | string | Required for `NGO`          |                                                        |
 | `nic`              | string | Required for `INVESTIGATOR` | Old format: `123456789V` or new format: `200012345678` |
 | `dob`              | date   | Required for `INVESTIGATOR` | Must be in the past                                    |
@@ -200,7 +216,7 @@ Register a new user account.
   "message": "User registered successfully",
   "data": {
     "user": {
-      "_id": "65f1a2b3c4d5e6f7a8b9c0d1",
+      "_id": "...",
       "name": "Jane Doe",
       "email": "jane@example.com",
       "role": "NGO"
@@ -242,18 +258,46 @@ Authenticate and receive a JWT token.
 
 ### Users
 
-> **All routes require authentication (`Bearer <token>`).**
+> All routes require authentication (`Authorization: Bearer <token>`).
 
 #### `GET /users`
 
-Get all users. **ADMIN only.**
+List all users with pagination and filters. **ADMIN only.**
+
+**Query Params:**
+
+| Param    | Type   | Description                                    |
+| -------- | ------ | ---------------------------------------------- |
+| `search` | string | Filter by name (case-insensitive)              |
+| `type`   | string | Filter by role: `ADMIN`, `INVESTIGATOR`, `NGO` |
+| `status` | string | `active` or `inactive`                         |
+| `page`   | number | Page number (default: `1`)                     |
+| `limit`  | number | Results per page (default: `10`)               |
 
 **Response `200`:**
 
 ```json
 {
   "success": true,
-  "data": { "users": [{ "_id": "...", "name": "...", "role": "..." }] }
+  "data": {
+    "users": [
+      {
+        "_id": "...",
+        "name": "...",
+        "email": "...",
+        "role": "...",
+        "isActive": true
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 3,
+      "totalCount": 25,
+      "limit": 10,
+      "hasNextPage": true,
+      "hasPrevPage": false
+    }
+  }
 }
 ```
 
@@ -269,7 +313,13 @@ Get a user by ID. **ADMIN or the user themselves.**
 {
   "success": true,
   "data": {
-    "user": { "_id": "...", "name": "...", "email": "...", "role": "..." }
+    "user": {
+      "_id": "...",
+      "name": "...",
+      "email": "...",
+      "role": "...",
+      "isActive": true
+    }
   }
 }
 ```
@@ -290,6 +340,16 @@ Update a user's profile. **ADMIN or the user themselves.**
 }
 ```
 
+**Response `200`:**
+
+```json
+{
+  "success": true,
+  "message": "User updated successfully",
+  "data": { "user": { "_id": "...", "name": "Jane Updated" } }
+}
+```
+
 ---
 
 #### `PUT /users/:id/role`
@@ -299,9 +359,7 @@ Update a user's role. **ADMIN only.**
 **Request Body:**
 
 ```json
-{
-  "role": "INVESTIGATOR"
-}
+{ "role": "INVESTIGATOR" }
 ```
 
 ---
@@ -313,17 +371,14 @@ Soft-delete (deactivate) a user. **ADMIN only.**
 **Response `200`:**
 
 ```json
-{
-  "success": true,
-  "message": "User deleted successfully"
-}
+{ "success": true, "message": "User deleted successfully" }
 ```
 
 ---
 
 ### Cases
 
-> **All routes require authentication.**
+> All routes require authentication.
 
 #### `POST /cases`
 
@@ -352,47 +407,62 @@ Create a new case. **NGO only.**
 | `priority`            | string | ❌       | `LOW`, `MEDIUM` (default), `HIGH`, `CRITICAL`                                                                  |
 | `incidentDate`        | date   | ✅       | Cannot be in the future                                                                                        |
 | `location`            | string | ✅       |                                                                                                                |
-| `caseReferenceNumber` | string | ❌       | External reference                                                                                             |
+| `caseReferenceNumber` | string | ❌       | External reference number                                                                                      |
 | `confidentialLevel`   | string | ❌       | `PUBLIC`, `INTERNAL` (default), `CONFIDENTIAL`                                                                 |
 
-**Response `201`:** Returns the created case object. `caseNumber` is auto-generated (e.g. `CASE-20260227-0001`).
+**Response `201`:** Returns the created case. `caseNumber` is auto-generated (e.g. `CASE-20260215-0001`).
 
 ---
 
 #### `GET /cases`
 
-Get cases. Role-based filtering is applied automatically:
+Get cases with pagination. Role-filtered automatically:
 
-- **NGO** — only sees own reported cases
-- **INVESTIGATOR** — only sees assigned cases
-- **ADMIN** — sees all cases
+- **NGO** — only cases they reported
+- **INVESTIGATOR** — only cases assigned to them
+- **ADMIN** — all cases
 
 **Query Params:**
 
-| Param      | Type   | Description                    |
-| ---------- | ------ | ------------------------------ |
-| `status`   | string | Filter by status               |
-| `priority` | string | Filter by priority             |
-| `category` | string | Filter by category             |
-| `search`   | string | Search in case title           |
-| `page`     | number | Page number (default: 1)       |
-| `limit`    | number | Results per page (default: 10) |
+| Param      | Type   | Description                      |
+| ---------- | ------ | -------------------------------- |
+| `search`   | string | Search in case title             |
+| `status`   | string | Filter by case status            |
+| `priority` | string | Filter by priority               |
+| `category` | string | Filter by category               |
+| `page`     | number | Page number (default: `1`)       |
+| `limit`    | number | Results per page (default: `10`) |
+
+**Response `200`:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "cases": [
+      {
+        "_id": "...",
+        "caseNumber": "CASE-20260215-0001",
+        "title": "...",
+        "status": "REPORTED"
+      }
+    ],
+    "pagination": { "currentPage": 1, "totalPages": 2, "totalCount": 15 }
+  }
+}
+```
 
 ---
 
 #### `GET /cases/:id`
 
-Get a single case by ID. Role-based access:
-
-- **NGO** — only own cases
-- **INVESTIGATOR** — only assigned cases
-- **ADMIN** — any case
+Get a single case by ID. Role-based access applies.
 
 ---
 
 #### `PUT /cases/:id`
 
-Update case details. **ADMIN or assigned INVESTIGATOR.** Cannot update status, assignment, or `caseNumber` through this endpoint.
+Update case details. **ADMIN or assigned INVESTIGATOR.**
 
 **Request Body** (all fields optional):
 
@@ -413,9 +483,7 @@ Assign an investigator to a case. **ADMIN or NGO.**
 **Request Body:**
 
 ```json
-{
-  "investigatorId": "65f1a2b3c4d5e6f7a8b9c0d2"
-}
+{ "investigatorId": "65f1a2b3c4d5e6f7a8b9c0d2" }
 ```
 
 > The referenced user must have the `INVESTIGATOR` role.
@@ -429,20 +497,18 @@ Update case status. **ADMIN or assigned INVESTIGATOR.**
 **Request Body:**
 
 ```json
-{
-  "status": "UNDER_INVESTIGATION"
-}
+{ "status": "UNDER_INVESTIGATION" }
 ```
 
 **Valid status transitions:**
 
 ```
-REPORTED → UNDER_INVESTIGATION | REJECTED
-UNDER_INVESTIGATION → EVIDENCE_COLLECTED | REJECTED
-EVIDENCE_COLLECTED → RESOLVED | UNDER_INVESTIGATION
-RESOLVED → CLOSED
-REJECTED → (terminal)
-CLOSED → (terminal)
+REPORTED            → UNDER_INVESTIGATION | REJECTED
+UNDER_INVESTIGATION → EVIDENCE_COLLECTED  | REJECTED
+EVIDENCE_COLLECTED  → RESOLVED            | UNDER_INVESTIGATION
+RESOLVED            → CLOSED
+REJECTED            → (terminal)
+CLOSED              → (terminal)
 ```
 
 ---
@@ -455,7 +521,7 @@ Soft-delete (archive) a case. **ADMIN only.**
 
 ### Case Progress
 
-> **All routes require authentication.**
+> All routes require authentication.
 
 #### `POST /cases/:id/progress`
 
@@ -465,16 +531,18 @@ Add a progress update to a case. **Assigned INVESTIGATOR only.**
 
 ```json
 {
-  "note": "Witness statements collected from 3 individuals.",
-  "status": "UNDER_INVESTIGATION"
+  "message": "Witness statements collected from 3 individuals.",
+  "statusSnapshot": "UNDER_INVESTIGATION"
 }
 ```
+
+> Submitting a `statusSnapshot` also syncs the parent case's `status` field to that value.
 
 ---
 
 #### `GET /cases/:id/progress`
 
-Get the full progress timeline for a case (newest first). **Authenticated** — role-based access enforced internally.
+Get the full progress timeline for a case (newest first).
 
 **Response `200`:**
 
@@ -485,7 +553,8 @@ Get the full progress timeline for a case (newest first). **Authenticated** — 
     "progress": [
       {
         "_id": "...",
-        "note": "Witness statements collected.",
+        "message": "Witness statements collected.",
+        "statusSnapshot": "UNDER_INVESTIGATION",
         "createdAt": "2026-02-27T10:00:00Z",
         "updatedBy": { "name": "John Smith" }
       }
@@ -498,14 +567,12 @@ Get the full progress timeline for a case (newest first). **Authenticated** — 
 
 #### `PUT /progress/:id`
 
-Update a progress entry. **ADMIN or assigned INVESTIGATOR** (INVESTIGATOR has a 15-minute edit window).
+Update a progress entry message. **ADMIN or the creating INVESTIGATOR** (INVESTIGATOR limited to a 15-minute edit window).
 
 **Request Body:**
 
 ```json
-{
-  "note": "Corrected note text."
-}
+{ "message": "Corrected note text." }
 ```
 
 ---
@@ -518,19 +585,19 @@ Delete a progress entry. **ADMIN only.**
 
 ### Evidence
 
-> **All routes require authentication.**
+> All routes require authentication.
 
 #### `POST /cases/:caseId/evidence`
 
-Upload a new evidence file to a case. **ADMIN or INVESTIGATOR.**
+Upload evidence to a case. **ADMIN or INVESTIGATOR.**
 
 **Request:** `multipart/form-data`
 
-| Field         | Type   | Description                                       |
-| ------------- | ------ | ------------------------------------------------- |
-| `file`        | file   | The evidence file (uploaded to Cloudinary)        |
-| `description` | string | Description of the evidence                       |
-| `type`        | string | Evidence type (e.g. `PHOTO`, `DOCUMENT`, `VIDEO`) |
+| Field         | Type   | Required | Description                                    |
+| ------------- | ------ | -------- | ---------------------------------------------- |
+| `file`        | file   | ✅       | Evidence file (uploaded to Cloudinary)         |
+| `description` | string | ✅       | Description of the evidence                    |
+| `type`        | string | ✅       | `PHOTO`, `DOCUMENT`, `VIDEO`, `AUDIO`, `OTHER` |
 
 **Response `201`:** Returns the created evidence record including `cloudinaryUrl`.
 
@@ -544,20 +611,18 @@ List all evidence for a case. **ADMIN, INVESTIGATOR, or NGO.**
 
 #### `GET /evidence/:id`
 
-Get a single evidence record by ID. **ADMIN, INVESTIGATOR, or NGO.**
+Get a single evidence record by ID.
 
 ---
 
 #### `PUT /evidence/:id`
 
-Update evidence metadata (description, type, etc.). **ADMIN or INVESTIGATOR.**
+Update evidence metadata. **ADMIN or INVESTIGATOR.**
 
 **Request Body:**
 
 ```json
-{
-  "description": "Updated description of the photo evidence."
-}
+{ "description": "Updated description." }
 ```
 
 ---
@@ -580,55 +645,69 @@ Mark evidence as verified. **ADMIN only.**
 
 #### `DELETE /evidence/:id`
 
-Soft-delete an evidence record and destroy the file from Cloudinary. **ADMIN only.**
+Soft-delete evidence and remove file from Cloudinary. **ADMIN only.**
 
 ---
 
 ### Reports & Analytics
 
-> **All routes require authentication.**
+> All routes require authentication.
 
-#### Dashboard
+#### `GET /reports/dashboard/summary`
 
-| Method | Endpoint                     | Access | Description                      |
-| ------ | ---------------------------- | ------ | -------------------------------- |
-| `GET`  | `/reports/dashboard/summary` | ADMIN  | Overall system dashboard summary |
+Overall system dashboard summary. **ADMIN only.**
+
+**Response `200`:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalCases": 120,
+    "totalUsers": 45,
+    "totalInvestigators": 12,
+    "totalNGOs": 8,
+    "totalEvidence": 340,
+    "casesByStatus": [
+      { "status": "REPORTED", "count": 30 },
+      { "status": "UNDER_INVESTIGATION", "count": 45 }
+    ],
+    "casesByPriority": [
+      { "priority": "HIGH", "count": 25 },
+      { "priority": "CRITICAL", "count": 10 }
+    ]
+  }
+}
+```
 
 ---
 
 #### Case Analytics
 
-| Method | Endpoint                     | Access     | Description                    |
-| ------ | ---------------------------- | ---------- | ------------------------------ |
-| `GET`  | `/reports/cases/by-status`   | ADMIN, NGO | Case count grouped by status   |
-| `GET`  | `/reports/cases/by-priority` | ADMIN, NGO | Case count grouped by priority |
-| `GET`  | `/reports/cases/by-category` | ADMIN, NGO | Case count grouped by category |
-| `GET`  | `/reports/cases/monthly`     | ADMIN, NGO | Monthly case trend             |
-| `GET`  | `/reports/cases/yearly`      | ADMIN, NGO | Yearly case trend              |
+| Method | Endpoint                                 | Access     | Description                    |
+| ------ | ---------------------------------------- | ---------- | ------------------------------ |
+| `GET`  | `/reports/cases/by-status`               | ADMIN, NGO | Case count grouped by status   |
+| `GET`  | `/reports/cases/by-priority`             | ADMIN, NGO | Case count grouped by priority |
+| `GET`  | `/reports/cases/by-category`             | ADMIN, NGO | Case count grouped by category |
+| `GET`  | `/reports/cases/monthly`                 | ADMIN, NGO | Monthly case submission trend  |
+| `GET`  | `/reports/cases/yearly`                  | ADMIN, NGO | Yearly case submission trend   |
+| `GET`  | `/reports/cases/average-resolution-time` | ADMIN      | Average time to resolve a case |
+| `GET`  | `/reports/cases/longest-open`            | ADMIN      | Cases open the longest         |
 
-**Common Query Params** (for case analytics):
+**Common Query Params:**
 
-| Param       | Type | Description           |
-| ----------- | ---- | --------------------- |
-| `startDate` | date | Filter from this date |
-| `endDate`   | date | Filter to this date   |
-
----
-
-#### Resolution Analytics
-
-| Method | Endpoint                                 | Access | Description                   |
-| ------ | ---------------------------------------- | ------ | ----------------------------- |
-| `GET`  | `/reports/cases/average-resolution-time` | ADMIN  | Average time to resolve cases |
-| `GET`  | `/reports/cases/longest-open`            | ADMIN  | Cases open the longest        |
+| Param       | Type | Description            |
+| ----------- | ---- | ---------------------- |
+| `startDate` | date | Filter from this date  |
+| `endDate`   | date | Filter up to this date |
 
 ---
 
 #### Investigator Performance
 
-| Method | Endpoint                                | Access                          | Description                                   |
-| ------ | --------------------------------------- | ------------------------------- | --------------------------------------------- |
-| `GET`  | `/reports/investigator/:id/performance` | ADMIN (any), INVESTIGATOR (own) | Performance stats for a specific investigator |
+| Method | Endpoint                                | Access                          | Description                           |
+| ------ | --------------------------------------- | ------------------------------- | ------------------------------------- |
+| `GET`  | `/reports/investigator/:id/performance` | ADMIN (any), INVESTIGATOR (own) | Performance stats for an investigator |
 
 ---
 
@@ -641,26 +720,52 @@ Soft-delete an evidence record and destroy the file from Cloudinary. **ADMIN onl
 
 ---
 
-#### Saved Reports (CRUD)
+#### Saved Reports
 
-| Method   | Endpoint       | Access | Description                       |
-| -------- | -------------- | ------ | --------------------------------- |
-| `POST`   | `/reports`     | ADMIN  | Save a report configuration       |
-| `GET`    | `/reports`     | ADMIN  | List all saved report configs     |
-| `GET`    | `/reports/:id` | ADMIN  | Get a saved report config by ID   |
-| `PUT`    | `/reports/:id` | ADMIN  | Update a saved report config      |
-| `DELETE` | `/reports/:id` | ADMIN  | Soft-delete a saved report config |
+| Method   | Endpoint       | Access | Description                                       |
+| -------- | -------------- | ------ | ------------------------------------------------- |
+| `POST`   | `/reports`     | ADMIN  | Save a report with a snapshot of the queried data |
+| `GET`    | `/reports`     | ADMIN  | List all saved reports                            |
+| `GET`    | `/reports/:id` | ADMIN  | Get a saved report by ID (includes `reportData`)  |
+| `PUT`    | `/reports/:id` | ADMIN  | Update a saved report                             |
+| `DELETE` | `/reports/:id` | ADMIN  | Soft-delete a saved report                        |
+
+---
+
+### Reference Data
+
+> Authenticated endpoints for UI helper data.
+
+#### `GET /ref/assignable-users`
+
+Returns a list of active investigators for assignment dropdowns.
+
+**Query Params:**
+
+| Param    | Type   | Description                            |
+| -------- | ------ | -------------------------------------- |
+| `search` | string | Filter by name (case-insensitive)      |
+| `limit`  | number | Max results (default: `10`, max: `50`) |
+
+**Response `200`:**
+
+```json
+{
+  "success": true,
+  "data": [{ "_id": "...", "name": "John Smith", "email": "john@example.com" }]
+}
+```
 
 ---
 
 ## Error Handling
 
-All errors follow a consistent response format:
+All error responses follow this format:
 
 ```json
 {
   "success": false,
-  "message": "Human-readable error message",
+  "message": "Human-readable error description",
   "errors": []
 }
 ```
@@ -672,3 +777,102 @@ All errors follow a consistent response format:
 | `403`       | Authenticated but insufficient role permissions |
 | `404`       | Resource not found                              |
 | `500`       | Internal server error                           |
+
+---
+
+## Testing
+
+The test suite uses **Jest** with **mongodb-memory-server** for a fully isolated in-memory MongoDB instance — no external database is needed.
+
+### Testing Environment Configuration
+
+Test environment variables are automatically configured in `src/__tests__/helpers/envSetup.js` and loaded via `jest.config.js` `setupFiles`. No `.env` file is required to run tests.
+
+```js
+NODE_ENV              = test
+JWT_SECRET            = test_jwt_secret_key_for_testing_only
+JWT_EXPIRES_IN        = 1d
+PORT                  = 0
+CLOUDINARY_CLOUD_NAME = test
+CLOUDINARY_API_KEY    = test
+CLOUDINARY_API_SECRET = test
+```
+
+A `dbSetup.js` helper (loaded via `setupFilesAfterEnv`) connects each test suite to a fresh in-memory MongoDB instance and tears it down after the suite completes.
+
+### Run All Tests
+
+```bash
+pnpm test
+```
+
+### Run with Coverage Report
+
+```bash
+pnpm run test:coverage
+```
+
+The HTML and LCOV coverage reports are written to `coverage/`. A text summary is printed to the console.
+
+### Test Structure
+
+```
+src/__tests__/
+├── helpers/
+│   ├── envSetup.js       # Stubs env variables before any module loads
+│   └── dbSetup.js        # Connects/disconnects in-memory MongoDB per suite
+├── unit/
+│   └── services/         # Service-layer unit tests with mocked repositories
+└── integration/
+    └── *.test.js         # Full HTTP tests via supertest against in-memory DB
+```
+
+### Run Only Unit Tests
+
+```bash
+pnpm test -- --testPathPattern=unit
+```
+
+### Run Only Integration Tests
+
+```bash
+pnpm test -- --testPathPattern=integration
+```
+
+---
+
+## Deployment
+
+The backend is deployed on **Railway**.
+
+### Railway Deployment Steps
+
+1. **Create a Railway project** and connect your GitHub repository.
+
+2. **Set the following environment variables** in the Railway dashboard under _Variables_:
+
+   | Variable                | Value                                |
+   | ----------------------- | ------------------------------------ |
+   | `NODE_ENV`              | `production`                         |
+   | `MONGODB_URI`           | Your MongoDB Atlas connection string |
+   | `JWT_SECRET`            | A strong random secret               |
+   | `JWT_EXPIRES_IN`        | `1d`                                 |
+   | `CLOUDINARY_CLOUD_NAME` | Your Cloudinary cloud name           |
+   | `CLOUDINARY_API_KEY`    | Your Cloudinary API key              |
+   | `CLOUDINARY_API_SECRET` | Your Cloudinary API secret           |
+
+   > Railway injects `PORT` automatically — do not set it manually.
+
+3. **Set the start command** (Railway detects `pnpm start` from `package.json` automatically, or configure via _Settings → Deploy_):
+
+   ```bash
+   pnpm start
+   ```
+
+4. **Trigger a deploy** — Railway builds and deploys on every push to the connected branch.
+
+5. **Verify** by hitting the health endpoint:
+
+   ```
+   GET https://<your-railway-domain>/api/v1/auth/login
+   ```
