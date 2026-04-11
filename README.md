@@ -876,3 +876,25 @@ The backend is deployed on **Railway**.
    ```
    GET https://<your-railway-domain>/api/v1/auth/login
    ```
+
+---
+
+## Changelog
+
+### v1.1.0 — April 2026
+
+**New Features**
+
+- **Victim Role**: New `VICTIM` role with access-controlled endpoints. Victims can view public evidence on cases they are associated with.
+- **Profile Photo Upload**: Users can upload a profile photo via `POST /users/:id/profile-photo`. Images are stored on Cloudinary with automatic 400×400 face-crop transformation.
+- **Email Notifications**: Automated email alerts via Nodemailer (Gmail SMTP) for investigator assignment, victim assignment, case progress updates, and victim invitations.
+- **Victim Assignment**: Cases can be assigned a victim from existing users or by sending an invitation email to an unregistered user.
+- **Report CSV Download**: Generate and download filtered case data as CSV files (`GET /reports/cases/download`). Saved report configurations can also be exported (`GET /reports/:id/download`).
+- **Seed Script**: Development seed script to populate 20 dummy cases and sample users across all roles.
+
+**Bug Fixes**
+
+- Evidence access for `VICTIM` role now correctly scoped to `PUBLIC` access-level items on associated cases only.
+- Enhanced structured logging for all email service operations (attempt, success, failure).
+- `GET /cases/:id` now returns both victim name and ID in the populated response.
+- Victim assignment email and invitation email were not being sent — both are now triggered correctly.
