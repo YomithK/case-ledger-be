@@ -202,3 +202,25 @@ export const caseIdValidation = celebrate({
         }),
     }),
 });
+
+/**
+ * Validation for assigning victim to case
+ */
+export const assignVictimValidation = celebrate({
+    [Segments.PARAMS]: Joi.object({
+        id: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
+            'string.pattern.base': 'Invalid case ID format',
+            'any.required': 'Case ID is required',
+        }),
+    }),
+    [Segments.BODY]: Joi.object({
+        victimId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).optional().allow(null).messages({
+            'string.pattern.base': 'Invalid victim ID format',
+        }),
+        inviteEmail: Joi.string().email().optional().messages({
+            'string.email': 'Please provide a valid email address',
+        }),
+    }).or('victimId', 'inviteEmail').messages({
+        'object.missing': 'Either victimId or inviteEmail is required',
+    }),
+});

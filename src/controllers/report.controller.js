@@ -177,6 +177,24 @@ export const getEvidenceVerificationRatio = asyncHandler(async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 
 /**
+ * @route   GET /api/v1/reports/cases/download
+ * @desc    Download filtered cases as a CSV file
+ * @access  ADMIN, NGO (own cases)
+ */
+export const downloadCasesCsv = asyncHandler(async (req, res) => {
+    const { userId, role } = req.user;
+    const { status, priority, category, startDate, endDate } = req.query;
+    const filters = { status, priority, category, startDate, endDate };
+
+    const csv = await reportService.downloadCasesCsv(filters, userId, role);
+
+    const filename = `cases-report-${new Date().toISOString().split('T')[0]}.csv`;
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(csv);
+});
+
+/**
  * @route   POST /api/v1/reports
  * @desc    Create a saved report configuration
  * @access  ADMIN only
@@ -219,6 +237,23 @@ export const getReportById = asyncHandler(async (req, res) => {
     const report = await reportService.getReportById(id, userId, role);
 
     sendSuccess(res, 200, 'Report retrieved successfully', { report });
+});
+
+/**
+ * @route   GET /api/v1/reports/:id/download
+ * @desc    Download a saved report as CSV
+ * @access  ADMIN only
+ */
+export const downloadSavedReportCsv = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { userId, role } = req.user;
+
+    const { csv, name } = await reportService.downloadSavedReportCsv(id, userId, role);
+
+    const filename = `${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.csv`;
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(csv);
 });
 
 /**
