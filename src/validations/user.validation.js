@@ -1,5 +1,15 @@
 import { celebrate, Joi, Segments } from 'celebrate';
 
+export const getUsersValidation = celebrate({
+    [Segments.QUERY]: Joi.object({
+        status: Joi.string().valid('active', 'inactive').optional(),
+        type: Joi.string().valid('ADMIN', 'INVESTIGATOR', 'NGO').optional(),
+        search: Joi.string().trim().optional(),
+        page: Joi.number().integer().min(1).optional(),
+        limit: Joi.number().integer().min(1).max(100).optional(),
+    }),
+});
+
 export const updateUserValidation = celebrate({
     [Segments.PARAMS]: Joi.object({
         id: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({

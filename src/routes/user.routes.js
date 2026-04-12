@@ -2,6 +2,7 @@ import express from 'express';
 import * as userController from '../controllers/user.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 import {
+    getUsersValidation,
     updateUserValidation,
     updateRoleValidation,
     userIdValidation,
@@ -13,7 +14,7 @@ const router = express.Router();
 router.use(authenticate);
 
 // Admin only - Get all users
-router.get('/', authorize('ADMIN'), userController.getAllUsers);
+router.get('/', authorize('ADMIN'), getUsersValidation, userController.getAllUsers);
 
 // Admin or self - Get user by ID
 router.get('/:id', userIdValidation, userController.getUserById);

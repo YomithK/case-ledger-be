@@ -1,6 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import * as caseProgressService from '../services/caseProgressService.js';
 import * as caseService from '../services/case.service.js';
+import { sendSuccess } from '../utils/response.js';
 
 /**
  * @route   POST /api/v1/cases/:id/progress
@@ -42,11 +43,7 @@ export const addProgress = asyncHandler(async (req, res) => {
         updatedBy: userId
     });
 
-    res.status(201).json({
-        success: true,
-        message: 'Progress update added successfully',
-        data: { progress: progressEntry },
-    });
+    sendSuccess(res, 201, 'Progress update added successfully', { progress: progressEntry });
 });
 
 /**
@@ -68,11 +65,7 @@ export const getCaseProgress = asyncHandler(async (req, res) => {
     // 2. Fetch Progress Timeline
     const progressDocs = await caseProgressService.getCaseProgress(caseId);
 
-    res.status(200).json({
-        success: true,
-        message: 'Case progress timeline retrieved successfully',
-        data: { progress: progressDocs },
-    });
+    sendSuccess(res, 200, 'Case progress timeline retrieved successfully', { progress: progressDocs });
 });
 
 /**
@@ -87,11 +80,7 @@ export const updateProgress = asyncHandler(async (req, res) => {
 
     const updatedEntry = await caseProgressService.updateProgressEntry(id, updateData, userId, role);
 
-    res.status(200).json({
-        success: true,
-        message: 'Progress update modified successfully',
-        data: { progress: updatedEntry },
-    });
+    sendSuccess(res, 200, 'Progress update modified successfully', { progress: updatedEntry });
 });
 
 /**
@@ -105,8 +94,5 @@ export const deleteProgress = asyncHandler(async (req, res) => {
 
     const result = await caseProgressService.deleteProgressEntry(id, role);
 
-    res.status(200).json({
-        success: true,
-        message: result.message,
-    });
+    sendSuccess(res, 200, result.message, null);
 });

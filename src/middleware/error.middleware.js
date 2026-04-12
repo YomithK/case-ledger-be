@@ -1,5 +1,7 @@
 import { isCelebrateError } from 'celebrate';
 import { server } from '../config/index.js';
+import logger from '../utils/logger.js';
+import { sendError } from '../utils/response.js';
 
 /**
  * Centralized error handling middleware
@@ -58,37 +60,19 @@ export const errorHandler = (err, req, res, next) => {
         message = 'Token expired';
     }
 
-    // Build error response
-    const errorResponse = {
-        success: false,
-        message,
-    };
-
-    if (errors) {
-        errorResponse.errors = errors;
-    }
-
-    // Include stack trace in development mode only
-    if (server.nodeEnv === 'development') {
-        errorResponse.stack = err.stack;
-    }
-
     // Log error for debugging
-    console.error('Error:', {
-        message: err.message,
-        statusCode,
-        stack: err.stack,
-    });
+    logger.error(message, { stack: err.stack, statusCode });
 
-    res.status(statusCode).json(errorResponse);
+    if (server.nodeEnv === 'development' && errors !== null) {
+        return res.status(statusCode).json({ success: false, message, errors });
+    }
+
+    sendError(res, statusCode, message, errors);
 };
 
 /**
  * Handle 404 - Not Found
  */
 export const notFound = (req, res) => {
-    res.status(404).json({
-        success: false,
-        message: `Route ${req.originalUrl} not found`,
-    });
+    sendError(res, 404, `Route ${req.originalUrl} not found`);
 };

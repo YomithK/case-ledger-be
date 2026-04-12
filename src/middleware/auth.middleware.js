@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { jwt as jwtConfig } from '../config/index.js';
 import User from '../models/User.js';
+import { sendError } from '../utils/response.js';
 
 /**
  * Authenticate middleware - Verify JWT token
@@ -11,10 +12,7 @@ export const authenticate = async (req, res, next) => {
         const authHeader = req.headers.authorization;
 
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({
-                success: false,
-                message: 'Access denied. No token provided.',
-            });
+            return sendError(res, 401, 'Access denied. No token provided.');
         }
 
         const token = authHeader.substring(7); // Remove 'Bearer ' prefix
@@ -26,10 +24,7 @@ export const authenticate = async (req, res, next) => {
         const user = await User.findOne({ _id: decoded.userId, isActive: true });
 
         if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid token. User not found.',
-            });
+            return sendError(res, 401, 'Invalid token. User not found.');
         }
 
         // Attach user to request object
@@ -43,23 +38,14 @@ export const authenticate = async (req, res, next) => {
         next();
     } catch (error) {
         if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid token.',
-            });
+            return sendError(res, 401, 'Invalid token.');
         }
 
         if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({
-                success: false,
-                message: 'Token expired.',
-            });
+            return sendError(res, 401, 'Token expired.');
         }
 
-        return res.status(500).json({
-            success: false,
-            message: 'Authentication failed.',
-        });
+        return sendError(res, 500, 'Authentication failed.');
     }
 };
 
@@ -69,17 +55,11 @@ export const authenticate = async (req, res, next) => {
 export const authorize = (...allowedRoles) => {
     return (req, res, next) => {
         if (!req.user) {
-            return res.status(401).json({
-                success: false,
-                message: 'Authentication required.',
-            });
+            return sendError(res, 401, 'Authentication required.');
         }
 
         if (!allowedRoles.includes(req.user.role)) {
-            return res.status(403).json({
-                success: false,
-                message: 'Access forbidden. Insufficient permissions.',
-            });
+            return sendError(res, 403, 'Access forbidden. Insufficient permissions.');
         }
 
         next();
