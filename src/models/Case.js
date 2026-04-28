@@ -86,6 +86,10 @@ const caseSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
+        victim: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+        },
         confidentialLevel: {
             type: String,
             enum: {

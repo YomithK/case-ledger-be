@@ -13,7 +13,7 @@ const router = express.Router();
 router.get(
     '/:id',
     authenticate,
-    authorize('ADMIN', 'INVESTIGATOR', 'NGO'),
+    authorize('ADMIN', 'INVESTIGATOR', 'NGO', 'VICTIM'),
     getEvidenceById
 );
 

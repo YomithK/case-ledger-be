@@ -131,8 +131,16 @@ export const getEvidenceByCase = async (caseId, query, user) => {
             error.statusCode = 403;
             throw error;
         }
-        // Investigators can see PUBLIC and INTERNAL but not CONFIDENTIAL
-        // (implement via exclusion - you can tune this per your policy)
+    }
+
+    if (role === 'VICTIM') {
+        const victimId = caseDoc.victim?.toString();
+        if (victimId !== userId.toString()) {
+            const error = new Error('Access forbidden. You are not the victim associated with this case.');
+            error.statusCode = 403;
+            throw error;
+        }
+        filters.accessLevel = 'PUBLIC';
     }
 
     // Apply optional filters from query
@@ -172,11 +180,26 @@ export const getEvidenceById = async (evidenceId, user) => {
 
     const { userId, role } = user;
 
-    // NGO can only see PUBLIC evidence for their cases
+    const caseId = evidence.caseId._id || evidence.caseId;
+
     if (role === 'NGO') {
-        const caseDoc = await caseRepository.findById(evidence.caseId._id || evidence.caseId);
+        const caseDoc = await caseRepository.findById(caseId);
         if (!caseDoc || caseDoc.reportedBy?.toString() !== userId.toString()) {
             const err = new Error('Access forbidden.');
+            err.statusCode = 403;
+            throw err;
+        }
+        if (evidence.accessLevel !== 'PUBLIC') {
+            const err = new Error('Access forbidden. This evidence is restricted.');
+            err.statusCode = 403;
+            throw err;
+        }
+    }
+
+    if (role === 'VICTIM') {
+        const caseDoc = await caseRepository.findById(caseId);
+        if (!caseDoc || caseDoc.victim?.toString() !== userId.toString()) {
+            const err = new Error('Access forbidden. You are not the victim associated with this case.');
             err.statusCode = 403;
             throw err;
         }

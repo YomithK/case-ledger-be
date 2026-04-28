@@ -1,6 +1,7 @@
 import express from 'express';
 import * as userController from '../controllers/user.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
+import profileUpload from '../middleware/profileUpload.middleware.js';
 import {
     getUsersValidation,
     updateUserValidation,
@@ -24,6 +25,9 @@ router.put('/:id', updateUserValidation, userController.updateUser);
 
 // Admin only - Update user role
 router.put('/:id/role', authorize('ADMIN'), updateRoleValidation, userController.updateUserRole);
+
+// Admin or self - Upload profile photo
+router.post('/:id/profile-photo', userIdValidation, profileUpload.single('photo'), userController.uploadProfilePhoto);
 
 // Admin only - Delete user
 router.delete('/:id', authorize('ADMIN'), userIdValidation, userController.deleteUser);

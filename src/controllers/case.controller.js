@@ -110,6 +110,21 @@ export const updateStatus = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @route   PUT /api/v1/cases/:id/assign-victim
+ * @desc    Assign victim to case
+ * @access  INVESTIGATOR (assigned) or ADMIN
+ */
+export const assignVictim = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { victimId, inviteEmail } = req.body;
+    const { userId, role } = req.user;
+
+    const updatedCase = await caseService.assignVictim(id, victimId, inviteEmail, userId, role);
+
+    sendSuccess(res, 200, 'Victim assigned successfully', { case: updatedCase });
+});
+
+/**
  * @route   GET /api/v1/cases/public
  * @desc    Get all public, non-archived cases
  * @access  Public (no authentication required)

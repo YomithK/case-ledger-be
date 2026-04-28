@@ -157,6 +157,21 @@ router.get(
 );
 
 // ─────────────────────────────────────────────────────────────
+// 7. CSV DOWNLOAD
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * @route   GET /reports/cases/download
+ * @desc    Download filtered cases as CSV
+ * @access  ADMIN, NGO (own cases only)
+ */
+router.get(
+    '/cases/download',
+    authorize('ADMIN', 'NGO'),
+    reportController.downloadCasesCsv
+);
+
+// ─────────────────────────────────────────────────────────────
 // 6. SAVED REPORT CRUD
 // ─────────────────────────────────────────────────────────────
 
@@ -194,6 +209,18 @@ router.get(
     authorize('ADMIN'),
     reportIdValidation,
     reportController.getReportById
+);
+
+/**
+ * @route   GET /reports/:id/download
+ * @desc    Download a saved report as CSV
+ * @access  ADMIN only
+ */
+router.get(
+    '/:id/download',
+    authorize('ADMIN'),
+    reportIdValidation,
+    reportController.downloadSavedReportCsv
 );
 
 /**

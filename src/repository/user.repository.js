@@ -229,3 +229,23 @@ export const nicExists = async (nic) => {
     const user = await User.findOne({ nic: nic.toUpperCase() });
     return !!user;
 };
+
+/**
+ * Find victim users available for case assignment
+ * @param {string} search - Optional name/email search keyword
+ * @param {number} limit - Max results (default 10, capped at 50)
+ * @returns {Promise<Array>} Array of victim user documents
+ */
+export const findVictimUsers = async (search, limit) => {
+    const query = { role: 'VICTIM', isActive: true };
+
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+        ];
+    }
+
+    const cap = Math.min(parseInt(limit) || 10, 50);
+    return await User.find(query).select('name email phoneNumber').limit(cap);
+};
